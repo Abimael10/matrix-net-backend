@@ -26,7 +26,10 @@ def configure_logging() -> None:
                     "handlers": ["default"],
                     "level": "DEBUG" if isinstance(config, DevConfig) else "INFO",
                     "propagate": False
-                }
+                },
+                "databases": {"handlers": ["default"], "level": "WARNING"},
+                #Removing when I migrate to PostgreSQL
+                "aiosqlite": {"handlers": ["default"], "level": "WARNING"}
             },
         }
     )
