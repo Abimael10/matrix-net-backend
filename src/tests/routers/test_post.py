@@ -10,6 +10,20 @@ async def create_post(body: str, async_client: AsyncClient, logged_in_token: str
     )
     return response.json()
 
+async def like_post(
+    post_id: int, 
+    async_client: AsyncClient, 
+    logged_in_token: str
+) -> dict:
+    
+    response = await async_client.post(
+        "/api/like",
+        json={"post_id": post_id},
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    
+    return response.json()
+
 async def create_comment(
         body: str, 
         post_id: int, 
@@ -32,7 +46,7 @@ async def created_post(async_client: AsyncClient, logged_in_token: str):
 async def created_comment(
     async_client: AsyncClient, 
     created_post: dict, 
-    logged_in_token
+    logged_in_token: str
 ):
     return await create_comment(
         "Test comment", 
@@ -159,3 +173,16 @@ async def test_get_missing_post_with_comments(
 ):
     response = await async_client.get("/api/posts/2")
     assert response.status_code == 404
+
+@pytest.mark.anyio
+async def test_like_post(
+    async_client: AsyncClient, 
+    created_post: dict, 
+    logged_in_token: str
+):
+    response = await async_client.post(
+        "/api/like",
+        json={"post_id": created_post["id"]},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 201

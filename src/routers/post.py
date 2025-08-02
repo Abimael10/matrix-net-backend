@@ -1,19 +1,30 @@
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends
-from src.db import comment_table, post_table, database
+from src.db import comment_table, likes_table, post_table, database
+
+import sqlalchemy
 
 from src.models.post import (
     UserPostI, 
     UserPost, 
     Comment, 
     CommentI, 
+    PostLikeI,
+    PostLike,
     UserPostWithComments
 )
 from src.models.user import User
 from src.security import get_current_user
 
 router = APIRouter()
+
+#Query to select post and likes
+select_post_and_likes = (
+    sqlalchemy.select(post_table, sqlalchemy.func.count(likes_table.c.id).label("likes"))
+    .select_from(post_table.outerjoin(likes_table))
+    .group_by(post_table.c.id)
+)
 
 async def find_post(post_id: int):
     query = post_table.select().where(post_table.c.id == post_id)
@@ -72,3 +83,19 @@ async def get_post_with_comments(post_id: int):
         "post": post, 
         "comments": await get_comments_on_post(post_id),
     }
+
+@router.post("/api/like", response_model=PostLike, status_code=201)
+async def like_post(
+    like: PostLikeI, 
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+    
+    post = await find_post(like.post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+        
+    data = {**like.model_dump(), "user_id": current_user.id}
+    query = likes_table.insert().values(data)
+    
+    last_record_id = await database.execute(query)
+    return {**data, "id": last_record_id}
