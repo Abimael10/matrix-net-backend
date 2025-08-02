@@ -163,7 +163,10 @@ async def test_get_single_post_with_its_comments(
     response = await async_client.get(f"/api/posts/{created_post["id"]}")
 
     assert response.status_code == 200
-    assert response.json() == {"post": created_post, "comments": [created_comment]}
+    assert response.json() == {
+        "post": {**created_post, "likes": 0}, 
+        "comments": [created_comment]
+    }
 
 @pytest.mark.anyio
 async def test_get_missing_post_with_comments(

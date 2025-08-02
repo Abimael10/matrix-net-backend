@@ -19,7 +19,9 @@ from src.security import get_current_user
 
 router = APIRouter()
 
-#Query to select post and likes
+#Query to select post with its amount of likes basically
+#Will see about optimizing the way I query like this since
+#it gets closer to SQL-like without doing too much magic with these ORMs...
 select_post_and_likes = (
     sqlalchemy.select(post_table, sqlalchemy.func.count(likes_table.c.id).label("likes"))
     .select_from(post_table.outerjoin(likes_table))
@@ -75,7 +77,11 @@ async def get_comments_on_post(post_id: int):
 #GET a single post and all its comments
 @router.get("/api/posts/{post_id}", response_model=UserPostWithComments, status_code=200)
 async def get_post_with_comments(post_id: int):
-    post = await find_post(post_id)
+    
+    query = select_post_and_likes.where(post_table.c.id == post_id)
+
+    post = await database.fetch_one(query)
+
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     
