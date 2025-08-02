@@ -7,3 +7,5 @@ __pycache__
 *.png
 *.db
 .pytest_cache
+*log
+test.db-journal
