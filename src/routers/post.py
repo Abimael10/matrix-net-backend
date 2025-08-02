@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Request, Depends
 from src.db import comment_table, post_table, database
 
 from src.models.post import (
@@ -8,6 +10,8 @@ from src.models.post import (
     CommentI, 
     UserPostWithComments
 )
+from src.models.user import User
+from src.security import get_current_user, oauth2_scheme
 
 router = APIRouter()
 
@@ -17,8 +21,12 @@ async def find_post(post_id: int):
 
 #POST create a post
 @router.post("/api/posts", response_model=UserPost, status_code=201)
-async def create_post(post: UserPostI):
-    data = post.model_dump()
+async def create_post(
+    post: UserPostI, 
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+
+    data = {**post.model_dump(), "user_id": current_user.id}
     query = post_table.insert().values(data)
     last_record_id = await database.execute(query)
     
@@ -32,12 +40,16 @@ async def get_all_posts():
 
 #POST create a comment a post
 @router.post("/api/posts/comment", response_model=Comment, status_code=201)
-async def create_comment(comment: CommentI):
+async def create_comment(
+    comment: CommentI, 
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+
     post = await find_post(comment.post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
-    data = comment.model_dump()
+    data = {**comment.model_dump(), "user_id": current_user.id}
     query = comment_table.insert().values(data)
     last_record_id = await database.execute(query)
 

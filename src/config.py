@@ -10,6 +10,7 @@ class BaseConfig(BaseSettings):
 class GlobalConfig(BaseConfig):
     DATABASE_URI: Optional[str] = None
     DB_FORCE_ROLL_BACK: bool = False
+    SECRET_KEY: str = "default-secret-key-change-in-production"
 
 class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_")
@@ -21,6 +22,7 @@ class TestConfig(GlobalConfig):
                                     #is not a high threat either, since it does not 
                                     #require a user auth and its records are a reflec of the code.
                                     #But PROD and DEV DBs stay hidden.
+    SECRET_KEY: str = "test-secret-key-change-in-production"
 
     model_config = SettingsConfigDict(env_prefix="TEST_")
 
