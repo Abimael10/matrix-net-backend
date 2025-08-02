@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from src.db import comment_table, post_table, database
 
 from src.models.post import (
@@ -11,7 +11,7 @@ from src.models.post import (
     UserPostWithComments
 )
 from src.models.user import User
-from src.security import get_current_user, oauth2_scheme
+from src.security import get_current_user
 
 router = APIRouter()
 
