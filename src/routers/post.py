@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -12,7 +13,8 @@ from src.models.post import (
     CommentI, 
     PostLikeI,
     PostLike,
-    UserPostWithComments
+    UserPostWithComments,
+    UserPostWithLikes
 )
 from src.models.user import User
 from src.security import get_current_user
@@ -45,10 +47,23 @@ async def create_post(
     
     return {**data, "id": last_record_id}
 
+#Helper enum for post sorting
+class PostSorting(str, Enum):
+    new = "new"
+    old = "old"
+    most_likes = "most_likes"
+
 #GET all the posts
-@router.get("/api/posts", response_model=list[UserPost], status_code=200)
-async def get_all_posts():
-    query = post_table.select()
+@router.get("/api/posts", response_model=list[UserPostWithLikes], status_code=200)
+async def get_all_posts(sorting: PostSorting = PostSorting.new):
+
+    if sorting == PostSorting.new:
+        query = select_post_and_likes.order_by(post_table.c.id.desc())
+    elif sorting == PostSorting.old:
+        query = select_post_and_likes.order_by(post_table.c.id.asc())
+    elif sorting == PostSorting.most_likes:
+        query = select_post_and_likes.order_by(sqlalchemy.desc("likes"))
+
     return await database.fetch_all(query)
 
 #POST create a comment a post
@@ -77,7 +92,7 @@ async def get_comments_on_post(post_id: int):
 #GET a single post and all its comments
 @router.get("/api/posts/{post_id}", response_model=UserPostWithComments, status_code=200)
 async def get_post_with_comments(post_id: int):
-    
+
     query = select_post_and_likes.where(post_table.c.id == post_id)
 
     post = await database.fetch_one(query)
