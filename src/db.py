@@ -39,8 +39,9 @@ comment_table = sqlalchemy.Table(
     sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("users.id"), nullable=False)
 )
 
+connect_args = {"check_same_thread": False} if "sqlite" in config.DATABASE_URI else {}
 engine = sqlalchemy.create_engine(
-    config.DATABASE_URI, connect_args={"check_same_thread": False}
+    config.DATABASE_URI, connect_args=connect_args
 )
 
 metadata.create_all(engine)

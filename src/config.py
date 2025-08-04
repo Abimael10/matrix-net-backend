@@ -24,8 +24,14 @@ class GlobalConfig(BaseConfig):
     B2_APPLICATION_KEY: Optional[str] = None
     B2_BUCKET_NAME: Optional[str] = None
 
+    #Sentry
+    SENTRY_DSN: Optional[str] = None
+
 class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_", extra="ignore")
+
+class ProdConfig(GlobalConfig):
+    model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
 
 class TestConfig(GlobalConfig):
     DATABASE_URI: str = "sqlite:///test.db"
@@ -42,14 +48,11 @@ class TestConfig(GlobalConfig):
 
     model_config = SettingsConfigDict(env_prefix="TEST_", extra="ignore")
 
-class ProdConfig(GlobalConfig):
-    model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
-
 @lru_cache()
 def get_config(env_state: str):
     configs = {"dev": DevConfig, "test": TestConfig, "prod": ProdConfig}
     return configs[env_state]()
 
 #This will allow me to run it in test mode, will look for alts later
-env_state = os.getenv("ENV", "test")
+env_state = os.getenv("ENV", "dev")
 config = get_config(env_state)

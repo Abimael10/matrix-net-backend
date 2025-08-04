@@ -1,7 +1,9 @@
 fastapi
 uvicorn[standard]
 sqlalchemy
+psycopg2-binary
 databases[aiosqlite]
+databases[asyncpg]
 python-dotenv
 pydantic-settings
 rich
@@ -13,3 +15,4 @@ passlib[bcrypt]
 httpx
 aiofiles
 b2sdk
+sentry-sdk[fastapi]
