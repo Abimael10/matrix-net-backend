@@ -13,9 +13,9 @@ class GlobalConfig(BaseConfig):
     SECRET_KEY: str = "default-secret-key-change-in-production"
 
     # Mailtrap configuration
-    MAIL_USERNAME: str
-    MAIL_PASSWORD: str
-    MAIL_FROM: str
+    MAIL_USERNAME: Optional[str] = None
+    MAIL_PASSWORD: Optional[str] = None
+    MAIL_FROM: Optional[str] = None
     MAIL_SERVER: str = "sandbox.smtp.mailtrap.io"
     MAIL_PORT: int = 2525
 
