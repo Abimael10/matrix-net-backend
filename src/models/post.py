@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 #POSTS MODEL
@@ -9,6 +11,7 @@ class UserPost(UserPostI):
 
     id: int
     user_id: int
+    image_url: Optional[str] = None
 
 class UserPostWithLikes(UserPost):
     model_config = ConfigDict(from_attributes=True)
