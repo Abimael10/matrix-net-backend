@@ -58,7 +58,7 @@ async def created_comment(
 @pytest.mark.anyio
 async def test_create_post(
     async_client: AsyncClient, 
-    registered_user: dict, 
+    confirmed_user: dict, 
     logged_in_token: str
 ):
     body = "Test post"
@@ -73,17 +73,17 @@ async def test_create_post(
     assert {
         "id": 1, 
         "body": body, 
-        "user_id": registered_user["id"]
+        "user_id": confirmed_user["id"]
     }.items() <= response.json().items()
 
 @pytest.mark.anyio
 async def test_create_post_expired_token(
     async_client: AsyncClient,
-    registered_user: dict,
+    confirmed_user: dict,
     mocker
 ):
     mocker.patch("src.security.access_token_expire_minutes", return_value = -1)
-    token = security.create_access_token(registered_user["email"])
+    token = security.create_access_token(confirmed_user["email"])
 
     response = await async_client.post(
         "/api/posts",
@@ -165,7 +165,7 @@ async def test_get_all_posts_sort_likes(
 async def test_create_comment(
     async_client: AsyncClient, 
     created_post: dict,
-    registered_user: dict,
+    confirmed_user: dict,
     logged_in_token: str
 ):
     
@@ -182,7 +182,7 @@ async def test_create_comment(
         "id": 1,
         "body": body,
         "post_id": created_post["id"],
-        "user_id": registered_user["id"]
+        "user_id": confirmed_user["id"]
     }.items() <= response.json().items()
 
 @pytest.mark.anyio
@@ -191,7 +191,7 @@ async def test_get_comments_on_post(
     created_post: dict, 
     created_comment: dict
 ):
-    response = await async_client.get(f"/api/posts/{created_post["id"]}/comment")
+    response = await async_client.get(f"/api/posts/{created_post['id']}/comment")
 
     assert response.status_code == 200
     assert response.json() == [created_comment]
@@ -199,7 +199,7 @@ async def test_get_comments_on_post(
 @pytest.mark.anyio
 async def test_get_no_comments_on_post(async_client: AsyncClient, created_post: dict):
 
-    response = await async_client.get(f"/api/posts/{created_post["id"]}/comment")
+    response = await async_client.get(f"/api/posts/{created_post['id']}/comment")
 
     assert response.status_code == 200
     assert response.json() == []
@@ -210,7 +210,7 @@ async def test_get_single_post_with_its_comments(
     created_post: dict,
     created_comment: dict
 ):
-    response = await async_client.get(f"/api/posts/{created_post["id"]}")
+    response = await async_client.get(f"/api/posts/{created_post['id']}")
 
     assert response.status_code == 200
     assert response.json() == {
