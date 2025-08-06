@@ -29,6 +29,9 @@ def create_credentials_exception(detail: str) -> HTTPException:
 def access_token_expire_minutes() -> int:
     return 30 #30 minutes
 
+def refresh_token_expire_days() -> int:
+    return 10080  # 7 days
+
 def confirm_token_expire_minutes() -> int:
     return 1440 #24 hours
 
@@ -50,8 +53,18 @@ def create_confirmation_token(email: str):
 
     return encoded_jwt
 
+def create_refresh_token(email: str):
+    """Create a refresh token with longer expiration"""
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        days=refresh_token_expire_days()
+    )
+    jwt_data = {"sub": email, "exp": expire, "type": "refresh"}
+    encoded_jwt = jwt.encode(jwt_data, KEY, algorithm = ALGORITHM)
+
+    return encoded_jwt
+
 def get_subject_for_token_type(
-    token: str, type: Literal["access", "confirmation"]
+    token: str, type: Literal["access", "confirmation", "refresh"]
 ) -> str:
     try:
         payload = jwt.decode(token, key=KEY, algorithms=[ALGORITHM])

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI, HTTPException
-
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import http_exception_handler
 
 import sentry_sdk
@@ -33,6 +33,21 @@ async def lifespan(app: FastAPI):
     await database.disconnect()
 
 app = FastAPI(lifespan=lifespan)
+
+#Only use these middleware in dev, for PROD remember to change to the client domain
+#app.add_middleware(
+#    CORSMiddleware,
+#    allow_origins=[
+#        "http://localhost:3000",
+#        "http://127.0.0.1:3000",
+#        "http://localhost:5173",
+#        "http://127.0.0.1:5173",
+#    ],
+#    allow_credentials=True,
+#    allow_methods=["*"],
+#    allow_headers=["*"],
+#)
+
 app.add_middleware(CorrelationIdMiddleware)
 
 app.include_router(post_router)
