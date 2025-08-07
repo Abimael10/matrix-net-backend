@@ -6,6 +6,7 @@ from src.models.user import UserI
 from src.security import (
     get_password_hash,
     get_user_by_email,
+    get_user_by_username,
     authenticate_user,
     create_access_token,
     create_refresh_token,
