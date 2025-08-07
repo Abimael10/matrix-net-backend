@@ -16,3 +16,4 @@ httpx
 aiofiles
 b2sdk
 sentry-sdk[fastapi]
+pydantic[email]

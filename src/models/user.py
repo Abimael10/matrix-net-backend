@@ -1,10 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 class User(BaseModel):
     id: int | None = None
     username: str
-    email: str
+    email: EmailStr
 
-#Defining it this way since I dont want to return the password and that only should come from the input
 class UserI(User):
     password : str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str

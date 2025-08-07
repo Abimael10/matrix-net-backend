@@ -2,7 +2,7 @@ import logging
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 
-from src.models.user import UserI
+from src.models.user import UserI, UserLogin
 from src.security import (
     get_password_hash,
     get_user_by_email,
@@ -65,7 +65,7 @@ async def register_user(user: UserI, request: Request):
 
 
 @router.post("/api/token")
-async def login(user: UserI):
+async def login(user: UserLogin):
     user = await authenticate_user(user.email, user.password)
     access_token = create_access_token(user.email)
     refresh_token = create_refresh_token(user.email)
@@ -75,7 +75,6 @@ async def login(user: UserI):
         "refresh_token": refresh_token,
         "token_type": "bearer",
     }
-
 
 @router.post("/api/token/refresh/")
 async def refresh_token(refresh_data: dict):
@@ -122,6 +121,7 @@ async def get_current_user_info(
     """
     return {
         "id": current_user.id,
+        "username": current_user.username,
         "email": current_user.email,
         "confirmed": current_user.confirmed,
     }
