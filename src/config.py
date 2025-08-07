@@ -25,7 +25,7 @@ class GlobalConfig(BaseConfig):
     B2_BUCKET_NAME: Optional[str] = None
 
     #Sentry
-    SENTRY_DSN: Optional[str] = None
+    #SENTRY_DSN: Optional[str] = None
 
 class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_", extra="ignore")

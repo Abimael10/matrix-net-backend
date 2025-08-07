@@ -91,7 +91,7 @@ def get_password_hash(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-async def get_user(email: str):
+async def get_user_by_email(email: str):
     logger.debug("Fetching user from the database", extra={"email": email})
     query = user_table.select().where(user_table.c.email == email)
     result = await database.fetch_one(query)
@@ -99,8 +99,16 @@ async def get_user(email: str):
     if result:
         return result
 
+async def get_user_by_username(username: str):
+    logger.debug("Fetching username from the database", extra={"username":username})
+    query = user_table.select().where(user_table.c.username == username)
+    result = await database.fetch_one(query)
+
+    if result:
+        return result
+
 async def authenticate_user(email: str, password: str):
-    user = await get_user(email)
+    user = await get_user_by_email(email)
 
     if not user:
         raise create_credentials_exception("Invalid email or password")
@@ -117,7 +125,7 @@ async def authenticate_user(email: str, password: str):
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     email = get_subject_for_token_type(token, "access")
     
-    user = await get_user(email=email)
+    user = await get_user_by_email(email=email)
     if user is None:
         raise create_credentials_exception("Could not find user for this token")
     
