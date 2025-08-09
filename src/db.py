@@ -36,7 +36,8 @@ likes_table = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("post_id", sqlalchemy.ForeignKey("posts.id"), nullable=False),
-    sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("users.id"), nullable=False)
+    sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.UniqueConstraint("post_id", "user_id", name="uq_likes_post_user"),
 )
 
 comment_table = sqlalchemy.Table(
@@ -67,5 +68,13 @@ with engine.begin() as conn:
         conn.execute(
             text(
                 "ALTER TABLE posts ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL"
+            )
+        )
+    # Ensure unique like per user per post
+    like_indexes = {idx["name"] for idx in inspector.get_indexes("likes")}
+    if "uq_likes_post_user" not in like_indexes:
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_likes_post_user ON likes (post_id, user_id)"
             )
         )

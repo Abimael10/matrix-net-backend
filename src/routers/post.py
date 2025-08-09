@@ -121,9 +121,30 @@ async def like_post(
     post = await find_post(like.post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-        
-    data = {**like.model_dump(), "user_id": current_user.id}
-    query = likes_table.insert().values(data)
     
-    last_record_id = await database.execute(query)
+    # Toggle like: if like exists for this user/post, remove it (unlike),
+    # otherwise create it (like). Always return a PostLike shape.
+    existing_like_query = (
+        likes_table.select()
+        .where(
+            (likes_table.c.post_id == like.post_id)
+            & (likes_table.c.user_id == current_user.id)
+        )
+    )
+    existing_like = await database.fetch_one(existing_like_query)
+
+    if existing_like:
+        # Unlike: delete and return the removed like info
+        delete_query = likes_table.delete().where(likes_table.c.id == existing_like.id)
+        await database.execute(delete_query)
+        return {
+            "id": existing_like.id,
+            "post_id": existing_like.post_id,
+            "user_id": existing_like.user_id,
+        }
+
+    # Like: create new like
+    data = {**like.model_dump(), "user_id": current_user.id}
+    insert_query = likes_table.insert().values(data)
+    last_record_id = await database.execute(insert_query)
     return {**data, "id": last_record_id}
