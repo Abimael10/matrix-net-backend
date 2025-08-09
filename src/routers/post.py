@@ -48,8 +48,11 @@ async def create_post(
     }
     query = post_table.insert().values(data)
     last_record_id = await database.execute(query)
-    
-    return {**data, "id": last_record_id}
+    # Fetch the inserted row to include server defaults like created_at
+    created = await database.fetch_one(
+        post_table.select().where(post_table.c.id == last_record_id)
+    )
+    return created
 
 #Helper enum for post sorting
 class PostSorting(str, Enum):

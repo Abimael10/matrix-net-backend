@@ -16,8 +16,8 @@ class GlobalConfig(BaseConfig):
     MAIL_USERNAME: Optional[str] = None
     MAIL_PASSWORD: Optional[str] = None
     MAIL_FROM: Optional[str] = None
-    MAIL_SERVER: str = "sandbox.smtp.mailtrap.io"
-    MAIL_PORT: int = 2525
+    MAIL_SERVER: str = "live.smtp.mailtrap.io"
+    MAIL_PORT: int = 587
 
     #Backblaze B2 configuration
     B2_KEY_ID: Optional[str] = None

@@ -1,5 +1,6 @@
 import databases
 import sqlalchemy
+from sqlalchemy import text
 from src.config import config
 
 metadata = sqlalchemy.MetaData()
@@ -21,7 +22,13 @@ post_table = sqlalchemy.Table(
     sqlalchemy.Column("body", sqlalchemy.String),
     sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("users.id"), nullable=False),
     sqlalchemy.Column("username", sqlalchemy.ForeignKey("users.username")),
-    sqlalchemy.Column("image_url", sqlalchemy.String)
+    sqlalchemy.Column("image_url", sqlalchemy.String),
+    sqlalchemy.Column(
+        "created_at",
+        sqlalchemy.DateTime(timezone=True),
+        server_default=sqlalchemy.text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    ),
 )
 
 likes_table = sqlalchemy.Table(
@@ -50,3 +57,15 @@ metadata.create_all(engine)
 database = databases.Database(
     config.DATABASE_URI, force_rollback = config.DB_FORCE_ROLL_BACK
 )
+
+# Lightweight runtime migration to add missing columns (dev/test convenience)
+with engine.begin() as conn:
+    inspector = sqlalchemy.inspect(conn)
+    columns = {col["name"] for col in inspector.get_columns("posts")}
+    if "created_at" not in columns:
+        # SQLite-compatible
+        conn.execute(
+            text(
+                "ALTER TABLE posts ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL"
+            )
+        )
