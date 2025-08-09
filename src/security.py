@@ -99,6 +99,10 @@ async def get_user_by_email(email: str):
     if result:
         return result
 
+async def get_user(email: str):
+    """Compatibility helper used in tests."""
+    return await get_user_by_email(email)
+
 async def get_user_by_username(username: str):
     logger.debug("Fetching username from the database", extra={"username":username})
     query = user_table.select().where(user_table.c.username == username)

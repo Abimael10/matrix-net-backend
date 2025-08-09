@@ -41,7 +41,11 @@ async def create_post(
     current_user: Annotated[User, Depends(get_current_user)]
 ):
 
-    data = {**post.model_dump(), "user_id": current_user.id}
+    data = {
+        **post.model_dump(),
+        "user_id": current_user.id,
+        "username": current_user.username,
+    }
     query = post_table.insert().values(data)
     last_record_id = await database.execute(query)
     

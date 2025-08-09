@@ -2,7 +2,7 @@ import logging
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 
-from src.models.user import UserI, UserLogin
+from src.models.user import UserI, UserLogin, UserRegister
 from src.security import (
     get_password_hash,
     get_user_by_email,
@@ -24,25 +24,38 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/api/register", status_code=201)
-async def register_user(user: UserI, request: Request):
+async def register_user(user: UserRegister, request: Request):
     if await get_user_by_email(user.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with that email already exists",
         )
-    if await get_user_by_username(user.username):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists"
-        )
+    # If username is provided, ensure it is unique; else derive from email
+    if user.username:
+        if await get_user_by_username(user.username):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists"
+            )
+        username = user.username
+    else:
+        # Derive a default username from the email local-part
+        base_username = user.email.split("@")[0]
+        candidate = base_username
+        suffix = 1
+        # Ensure uniqueness by appending numeric suffix if needed
+        while await get_user_by_username(candidate):
+            suffix += 1
+            candidate = f"{base_username}{suffix}"
+        username = candidate
 
     hashed_password = get_password_hash(user.password)
     # This is wrong, I will handle hashing the password later after tests
     query = user_table.insert().values(
-        username=user.username, 
-        email=user.email, 
-        password=hashed_password
-        )
+        username=username,
+        email=user.email,
+        password=hashed_password,
+    )
 
     await database.execute(query)
 

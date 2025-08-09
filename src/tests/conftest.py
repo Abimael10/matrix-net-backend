@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
 
-from src.db import database, user_table
+from src.db import database, user_table, post_table, comment_table, likes_table
 from src.main import app
 #from src.routers.post import comment_table, post_table
 
@@ -19,6 +19,21 @@ def client() -> Generator:
 @pytest.fixture(autouse=True)
 async def db() -> AsyncGenerator:
     await database.connect()
+    # Ensure a clean database state before each test
+    # Delete in child-to-parent order to satisfy foreign key constraints
+    await database.execute(likes_table.delete())
+    await database.execute(comment_table.delete())
+    await database.execute(post_table.delete())
+    await database.execute(user_table.delete())
+
+    # Reset SQLite autoincrement sequences if using SQLite
+    try:
+        await database.execute(
+            "DELETE FROM sqlite_sequence WHERE name IN ('users','posts','likes','comments')"
+        )
+    except Exception:
+        # Ignore for non-SQLite databases
+        pass
     yield
     await database.disconnect()
 

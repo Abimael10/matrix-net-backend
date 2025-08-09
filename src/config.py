@@ -53,6 +53,9 @@ def get_config(env_state: str):
     configs = {"dev": DevConfig, "test": TestConfig, "prod": ProdConfig}
     return configs[env_state]()
 
-#This will allow me to run it in test mode, will look for alts later
-env_state = os.getenv("ENV", "dev")
+# Prefer test config automatically when running under pytest unless ENV is set
+detected_env = os.getenv("ENV")
+if not detected_env and os.getenv("PYTEST_CURRENT_TEST"):
+    detected_env = "test"
+env_state = detected_env or "dev"
 config = get_config(env_state)

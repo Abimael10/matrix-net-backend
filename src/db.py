@@ -20,6 +20,7 @@ post_table = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("body", sqlalchemy.String),
     sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("users.id"), nullable=False),
+    sqlalchemy.Column("username", sqlalchemy.ForeignKey("users.username")),
     sqlalchemy.Column("image_url", sqlalchemy.String)
 )
 

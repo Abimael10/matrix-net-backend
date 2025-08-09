@@ -11,6 +11,7 @@ class UserPost(UserPostI):
 
     id: int
     user_id: int
+    username: str
     image_url: Optional[str] = None
 
 class UserPostWithLikes(UserPost):

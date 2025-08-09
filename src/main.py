@@ -9,7 +9,7 @@ from fastapi.exception_handlers import http_exception_handler
 #Keeping sentry off while testing and developing since it will create so many issues
 #import sentry_sdk
 
-from src.config import config
+#from src.config import config
 from src.db import database
 from src.log_config import configure_logging
 
@@ -38,12 +38,7 @@ app = FastAPI(lifespan=lifespan)
 #Only use these middleware in dev, for PROD remember to change to the client domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
