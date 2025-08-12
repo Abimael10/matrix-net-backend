@@ -3,6 +3,18 @@ import sqlalchemy
 from sqlalchemy import text
 
 from src.config import config
+import os
+
+# Validate DATABASE_URI is configured
+if not config.DATABASE_URI:
+    env_state = os.getenv("ENV", "dev")
+    env_prefix = {"dev": "DEV_", "test": "TEST_", "prod": "PROD_"}.get(env_state, "DEV_")
+    raise ValueError(
+        f"DATABASE_URI is not configured for environment '{env_state}'. "
+        f"Please set the environment variable '{env_prefix}DATABASE_URI' "
+        f"with your database connection string. "
+        f"For PostgreSQL: 'postgresql://user:password@host:port/database'"
+    )
 
 metadata = sqlalchemy.MetaData()
 
@@ -67,7 +79,7 @@ comment_table = sqlalchemy.Table(
     ),
 )
 
-connect_args = {"check_same_thread": False} if "sqlite" in config.DATABASE_URI else {}
+connect_args = {"check_same_thread": False} if config.DATABASE_URI and "sqlite" in config.DATABASE_URI else {}
 engine = sqlalchemy.create_engine(config.DATABASE_URI, connect_args=connect_args)
 
 metadata.create_all(engine)
@@ -76,7 +88,7 @@ database = databases.Database(
 )
 
 # Only run runtime migrations for SQLite (dev/test convenience)
-if "sqlite" in config.DATABASE_URI:
+if config.DATABASE_URI and "sqlite" in config.DATABASE_URI:
     with engine.begin() as conn:
         inspector = sqlalchemy.inspect(conn)
         columns = {col["name"] for col in inspector.get_columns("posts")}

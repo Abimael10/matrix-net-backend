@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import Optional
 import os
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class BaseConfig(BaseSettings):
@@ -31,13 +32,55 @@ class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_", extra="ignore")
 
 class ProdConfig(GlobalConfig):
-    model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
+    # Try multiple environment variable names for better deployment platform compatibility
+    DATABASE_URI: Optional[str] = Field(
+        default=None,
+        validation_alias="DATABASE_URL"  # Most platforms use DATABASE_URL
+    )
+    SECRET_KEY: Optional[str] = Field(
+        default=None,
+        validation_alias="SECRET_KEY"  # Standard name
+    )
+
+    # Override other fields to try standard names first, then prefixed
+    MAIL_USERNAME: Optional[str] = Field(default=None, validation_alias="MAIL_USERNAME")
+    MAIL_PASSWORD: Optional[str] = Field(default=None, validation_alias="MAIL_PASSWORD")
+    MAIL_FROM: Optional[str] = Field(default=None, validation_alias="MAIL_FROM")
+
+    B2_KEY_ID: Optional[str] = Field(default=None, validation_alias="B2_KEY_ID")
+    B2_APPLICATION_KEY: Optional[str] = Field(default=None, validation_alias="B2_APPLICATION_KEY")
+    B2_BUCKET_NAME: Optional[str] = Field(default=None, validation_alias="B2_BUCKET_NAME")
+
+    SENTRY_DSN: Optional[str] = Field(default=None, validation_alias="SENTRY_DSN")
+
+    model_config = SettingsConfigDict(extra="ignore")
+
+    def model_post_init(self, __context):
+        # Fallback to prefixed env vars if standard ones aren't set
+        if not self.DATABASE_URI:
+            self.DATABASE_URI = os.getenv("PROD_DATABASE_URI")
+        if not self.SECRET_KEY:
+            self.SECRET_KEY = os.getenv("PROD_SECRET_KEY")
+        if not self.MAIL_USERNAME:
+            self.MAIL_USERNAME = os.getenv("PROD_MAIL_USERNAME")
+        if not self.MAIL_PASSWORD:
+            self.MAIL_PASSWORD = os.getenv("PROD_MAIL_PASSWORD")
+        if not self.MAIL_FROM:
+            self.MAIL_FROM = os.getenv("PROD_MAIL_FROM")
+        if not self.B2_KEY_ID:
+            self.B2_KEY_ID = os.getenv("PROD_B2_KEY_ID")
+        if not self.B2_APPLICATION_KEY:
+            self.B2_APPLICATION_KEY = os.getenv("PROD_B2_APPLICATION_KEY")
+        if not self.B2_BUCKET_NAME:
+            self.B2_BUCKET_NAME = os.getenv("PROD_B2_BUCKET_NAME")
+        if not self.SENTRY_DSN:
+            self.SENTRY_DSN = os.getenv("PROD_SENTRY_DSN")
 
 class TestConfig(GlobalConfig):
     DATABASE_URI: str = "sqlite:///test.db"
     DB_FORCE_ROLL_BACK: bool = True #Pretty much safe in a test database,
                                     #Also putting the hard coded test DB address
-                                    #is not a high threat either, since it does not 
+                                    #is not a high threat either, since it does not
                                     #require a user auth and its records are a reflec of the code.
                                     #But PROD and DEV DBs stay hidden.
     SECRET_KEY: str = "test-secret-key-change-in-production"
