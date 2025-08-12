@@ -7,7 +7,7 @@ import os
 
 # Validate DATABASE_URI is configured
 if not config.DATABASE_URI:
-    env_state = os.getenv("ENV", "dev")
+    env_state = os.getenv("ENV", "prod")
     env_prefix = {"dev": "DEV_", "test": "TEST_", "prod": "PROD_"}.get(env_state, "DEV_")
     raise ValueError(
         f"DATABASE_URI is not configured for environment '{env_state}'. "
