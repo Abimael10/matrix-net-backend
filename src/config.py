@@ -33,10 +33,7 @@ class DevConfig(GlobalConfig):
 
 class ProdConfig(GlobalConfig):
     # Try multiple environment variable names for better deployment platform compatibility
-    DATABASE_URI: Optional[str] = Field(
-        default=None,
-        validation_alias="DATABASE_URL"  # Most platforms use DATABASE_URL
-    )
+    DATABASE_URI: Optional[str] = os.getenv("DATABASE_URL") or os.getenv("PROD_DATABASE_URI")
     SECRET_KEY: Optional[str] = Field(
         default=None,
         validation_alias="SECRET_KEY"  # Standard name
@@ -56,12 +53,7 @@ class ProdConfig(GlobalConfig):
     model_config = SettingsConfigDict(extra="ignore")
 
     def model_post_init(self, __context):
-        # First try DATABASE_URL (standard for most platforms like Render)
-        if not self.DATABASE_URI:
-            self.DATABASE_URI = os.getenv("DATABASE_URL")
         # Fallback to prefixed env vars if standard ones aren't set
-        if not self.DATABASE_URI:
-            self.DATABASE_URI = os.getenv("PROD_DATABASE_URI")
         if not self.SECRET_KEY:
             self.SECRET_KEY = os.getenv("PROD_SECRET_KEY")
         if not self.MAIL_USERNAME:
