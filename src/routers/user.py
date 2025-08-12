@@ -1,25 +1,24 @@
 import logging
 from typing import Annotated
-from fastapi import APIRouter, HTTPException, status, Request, Depends
 
-from src.models.user import UserI, UserLogin, UserRegister, UserProfileUpdate
+import sqlalchemy
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+
+from src.auth_tasks.send_confirm_email import send_email
+from src.db import database, likes_table, post_table, user_table
+from src.models.user import UserI, UserLogin, UserProfileUpdate, UserRegister
+from src.models.user_settings import ChangePasswordRequest, DeleteAccountRequest
 from src.security import (
-    get_password_hash,
-    get_user_by_email,
-    get_user_by_username,
     authenticate_user,
     create_access_token,
-    create_refresh_token,
     create_confirmation_token,
-    get_subject_for_token_type,
+    create_refresh_token,
     get_current_user,
+    get_password_hash,
+    get_subject_for_token_type,
+    get_user_by_email,
+    get_user_by_username,
 )
-from src.auth_tasks.send_confirm_email import send_email
-
-from src.models.user_settings import ChangePasswordRequest, DeleteAccountRequest
-
-from src.db import database, user_table, post_table, likes_table
-import sqlalchemy
 
 router = APIRouter()
 
@@ -38,7 +37,7 @@ async def register_user(user: UserRegister, request: Request):
         if await get_user_by_username(user.username):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already exists"
+                detail="Username already exists",
             )
         username = user.username
     else:
@@ -95,6 +94,7 @@ async def login(user: UserLogin):
         "token_type": "bearer",
     }
 
+
 @router.post("/api/token/refresh/")
 async def refresh_token(refresh_data: dict):
     """
@@ -146,7 +146,9 @@ async def get_current_user_info(
     )
     likes_received_query = (
         sqlalchemy.select(sqlalchemy.func.count())
-        .select_from(likes_table.join(post_table, likes_table.c.post_id == post_table.c.id))
+        .select_from(
+            likes_table.join(post_table, likes_table.c.post_id == post_table.c.id)
+        )
         .where(post_table.c.user_id == current_user.id)
     )
     posts_count = await database.fetch_val(posts_count_query) or 0
@@ -196,7 +198,9 @@ async def update_current_user_profile(
     )
     likes_received_query = (
         sqlalchemy.select(sqlalchemy.func.count())
-        .select_from(likes_table.join(post_table, likes_table.c.post_id == post_table.c.id))
+        .select_from(
+            likes_table.join(post_table, likes_table.c.post_id == post_table.c.id)
+        )
         .where(post_table.c.user_id == current_user.id)
     )
     posts_count = await database.fetch_val(posts_count_query) or 0
@@ -219,6 +223,7 @@ async def update_current_user_profile(
         "likes_received": likes_received,
     }
 
+
 @router.get("/api/confirm/{token}")
 async def confirm_email(token: str):
     email = get_subject_for_token_type(token, "confirmation")
@@ -234,7 +239,7 @@ async def confirm_email(token: str):
 @router.delete("/api/user", status_code=204)
 async def delete_account(
     payload: DeleteAccountRequest,
-    current_user: Annotated[UserI, Depends(get_current_user)]
+    current_user: Annotated[UserI, Depends(get_current_user)],
 ):
     # Optionally verify password before deletion
     if payload.password:
@@ -242,19 +247,46 @@ async def delete_account(
         if not user:
             raise HTTPException(status_code=401, detail="Invalid password")
 
-    # Delete user and related data in a transaction
+    # Delete user and all related data in a transaction (posts, likes, comments, user)
+    from src.db import comment_table
+
     async with database.transaction():
-        await database.execute(post_table.delete().where(post_table.c.user_id == current_user.id))
-        await database.execute(likes_table.delete().where(likes_table.c.user_id == current_user.id))
-        # Optionally: delete comments, etc.
-        await database.execute(user_table.delete().where(user_table.c.id == current_user.id))
+        # Delete all comments made by the user
+        await database.execute(
+            comment_table.delete().where(comment_table.c.user_id == current_user.id)
+        )
+        # Delete all likes made by the user
+        await database.execute(
+            likes_table.delete().where(likes_table.c.user_id == current_user.id)
+        )
+        # Delete all posts made by the user (and comments on those posts)
+        user_posts = await database.fetch_all(
+            post_table.select().where(post_table.c.user_id == current_user.id)
+        )
+        for post in user_posts:
+            # Delete comments on each post
+            await database.execute(
+                comment_table.delete().where(comment_table.c.post_id == post.id)
+            )
+            # Delete likes on each post
+            await database.execute(
+                likes_table.delete().where(likes_table.c.post_id == post.id)
+            )
+        await database.execute(
+            post_table.delete().where(post_table.c.user_id == current_user.id)
+        )
+        # Finally, delete the user
+        await database.execute(
+            user_table.delete().where(user_table.c.id == current_user.id)
+        )
     # Optionally: Invalidate tokens/sessions here
     return
+
 
 @router.post("/api/user/change-password", status_code=200)
 async def change_password(
     payload: ChangePasswordRequest,
-    current_user: Annotated[UserI, Depends(get_current_user)]
+    current_user: Annotated[UserI, Depends(get_current_user)],
 ):
     # Verify old password
     user = await authenticate_user(current_user.email, payload.old_password)
