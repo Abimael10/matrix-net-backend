@@ -56,6 +56,9 @@ class ProdConfig(GlobalConfig):
     model_config = SettingsConfigDict(extra="ignore")
 
     def model_post_init(self, __context):
+        # First try DATABASE_URL (standard for most platforms like Render)
+        if not self.DATABASE_URI:
+            self.DATABASE_URI = os.getenv("DATABASE_URL")
         # Fallback to prefixed env vars if standard ones aren't set
         if not self.DATABASE_URI:
             self.DATABASE_URI = os.getenv("PROD_DATABASE_URI")
