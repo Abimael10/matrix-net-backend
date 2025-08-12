@@ -5,6 +5,13 @@ from sqlalchemy import text
 from src.config import config
 import os
 
+# Debug logging to see what's available
+print(f"DEBUG: ENV = {os.getenv('ENV')}")
+print(f"DEBUG: DATABASE_URL = {os.getenv('DATABASE_URL')}")
+print(f"DEBUG: PROD_DATABASE_URI = {os.getenv('PROD_DATABASE_URI')}")
+print(f"DEBUG: config.DATABASE_URI = {config.DATABASE_URI}")
+print(f"DEBUG: All env vars starting with DATABASE: {[k for k in os.environ.keys() if 'DATABASE' in k]}")
+
 # Validate DATABASE_URI is configured
 if not config.DATABASE_URI:
     env_state = os.getenv("ENV", "prod")
