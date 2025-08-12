@@ -141,6 +141,7 @@ async def get_current_user_info(
         "confirmed": current_user.confirmed,
         "bio": current_user.bio,
         "location": current_user.location,
+        "created_at": current_user.created_at,
     }
 
 
