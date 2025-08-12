@@ -10,7 +10,7 @@ class BaseConfig(BaseSettings):
 class GlobalConfig(BaseConfig):
     DATABASE_URI: Optional[str] = None
     DB_FORCE_ROLL_BACK: bool = False
-    SECRET_KEY: str = "default-secret-key-change-in-production"
+    SECRET_KEY: Optional[str] = None
 
     # Mailtrap configuration
     MAIL_USERNAME: Optional[str] = None
@@ -25,7 +25,7 @@ class GlobalConfig(BaseConfig):
     B2_BUCKET_NAME: Optional[str] = None
 
     #Sentry
-    #SENTRY_DSN: Optional[str] = None
+    SENTRY_DSN: Optional[str] = None
 
 class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_", extra="ignore")
@@ -57,5 +57,5 @@ def get_config(env_state: str):
 detected_env = os.getenv("ENV")
 if not detected_env and os.getenv("PYTEST_CURRENT_TEST"):
     detected_env = "test"
-env_state = detected_env or "dev"
+env_state = detected_env or "prod"
 config = get_config(env_state)

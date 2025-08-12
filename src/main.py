@@ -7,9 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import http_exception_handler
 
 #Keeping sentry off while testing and developing since it will create so many issues
-#import sentry_sdk
+import sentry_sdk
 
 #from src.config import config
+from src import config
 from src.db import database
 from src.log_config import configure_logging
 
@@ -17,12 +18,12 @@ from src.routers.post import router as post_router
 from src.routers.user import router as user_router
 from src.routers.upload import router as upload_router
 
-#sentry_sdk.init(
-#    dsn=config.SENTRY_DSN,
-#    # Add data like request headers and IP for users,
-#    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
-#    send_default_pii=True,
-#)
+sentry_sdk.init(
+    dsn=config.SENTRY_DSN,
+    # Add data like request headers and IP for users,
+    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+    send_default_pii=True,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +39,9 @@ app = FastAPI(lifespan=lifespan)
 #Only use these middleware in dev, for PROD remember to change to the client domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://abimael.site", "https://matrix-frontend-lkr9.onrender.com"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
