@@ -10,7 +10,7 @@ from fastapi.exception_handlers import http_exception_handler
 import sentry_sdk
 
 #from src.config import config
-from src import config
+from src.config import config
 from src.db import database
 from src.log_config import configure_logging
 
