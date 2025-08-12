@@ -100,5 +100,5 @@ def get_config(env_state: str):
 detected_env = os.getenv("ENV")
 if not detected_env and os.getenv("PYTEST_CURRENT_TEST"):
     detected_env = "test"
-env_state = detected_env or "dev"
+env_state = detected_env or "prod"
 config = get_config(env_state)
