@@ -12,7 +12,9 @@ user_table = sqlalchemy.Table(
     sqlalchemy.Column("username", sqlalchemy.String, unique=True),
     sqlalchemy.Column("email", sqlalchemy.String, unique=True),
     sqlalchemy.Column("password", sqlalchemy.String),
-    sqlalchemy.Column("confirmed", sqlalchemy.Boolean, default=False)
+    sqlalchemy.Column("confirmed", sqlalchemy.Boolean, default=False),
+    sqlalchemy.Column("bio", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("location", sqlalchemy.String, nullable=True),
 )
 
 post_table = sqlalchemy.Table(
@@ -84,6 +86,20 @@ with engine.begin() as conn:
         conn.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_likes_post_user ON likes (post_id, user_id)"
+            )
+        )
+    # Ensure users table has bio column
+    user_columns = {col["name"] for col in inspector.get_columns("users")}
+    if "bio" not in user_columns:
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN bio VARCHAR"
+            )
+        )
+    if "location" not in user_columns:
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN location VARCHAR"
             )
         )
     # Ensure comments table has expected columns

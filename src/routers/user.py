@@ -55,6 +55,8 @@ async def register_user(user: UserRegister, request: Request):
         username=username,
         email=user.email,
         password=hashed_password,
+        bio=user.bio,
+        location=user.location,
     )
 
     await database.execute(query)
@@ -137,6 +139,8 @@ async def get_current_user_info(
         "username": current_user.username,
         "email": current_user.email,
         "confirmed": current_user.confirmed,
+        "bio": current_user.bio,
+        "location": current_user.location,
     }
 
 
