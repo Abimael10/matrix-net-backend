@@ -16,6 +16,8 @@ from src.security import (
 )
 from src.auth_tasks.send_confirm_email import send_email
 
+from src.models.user_settings import ChangePasswordRequest, DeleteAccountRequest
+
 from src.db import database, user_table, post_table, likes_table
 import sqlalchemy
 
@@ -226,3 +228,44 @@ async def confirm_email(token: str):
 
     await database.execute(query)
     return {"detail": "User confirmed. You may close this window."}
+
+
+# User settings models
+@router.delete("/api/user", status_code=204)
+async def delete_account(
+    payload: DeleteAccountRequest,
+    current_user: Annotated[UserI, Depends(get_current_user)]
+):
+    # Optionally verify password before deletion
+    if payload.password:
+        user = await authenticate_user(current_user.email, payload.password)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid password")
+
+    # Delete user and related data in a transaction
+    async with database.transaction():
+        await database.execute(post_table.delete().where(post_table.c.user_id == current_user.id))
+        await database.execute(likes_table.delete().where(likes_table.c.user_id == current_user.id))
+        # Optionally: delete comments, etc.
+        await database.execute(user_table.delete().where(user_table.c.id == current_user.id))
+    # Optionally: Invalidate tokens/sessions here
+    return
+
+@router.post("/api/user/change-password", status_code=200)
+async def change_password(
+    payload: ChangePasswordRequest,
+    current_user: Annotated[UserI, Depends(get_current_user)]
+):
+    # Verify old password
+    user = await authenticate_user(current_user.email, payload.old_password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid old password")
+    # Hash and update new password
+    new_hashed = get_password_hash(payload.new_password)
+    await database.execute(
+        user_table.update()
+        .where(user_table.c.id == current_user.id)
+        .values(password=new_hashed)
+    )
+    # Optionally: Invalidate other sessions/tokens here
+    return {"detail": "Password changed successfully."}
