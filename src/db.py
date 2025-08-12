@@ -15,6 +15,7 @@ user_table = sqlalchemy.Table(
     sqlalchemy.Column("confirmed", sqlalchemy.Boolean, default=False),
     sqlalchemy.Column("bio", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("location", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("avatar_url", sqlalchemy.String, nullable=True),
     sqlalchemy.Column(
         "created_at",
         sqlalchemy.DateTime(timezone=True),
@@ -106,6 +107,12 @@ with engine.begin() as conn:
         conn.execute(
             text(
                 "ALTER TABLE users ADD COLUMN location VARCHAR"
+            )
+        )
+    if "avatar_url" not in user_columns:
+        conn.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN avatar_url VARCHAR"
             )
         )
     if "created_at" not in user_columns:

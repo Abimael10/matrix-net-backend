@@ -2,7 +2,7 @@ import logging
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 
-from src.models.user import UserI, UserLogin, UserRegister
+from src.models.user import UserI, UserLogin, UserRegister, UserProfileUpdate
 from src.security import (
     get_password_hash,
     get_user_by_email,
@@ -16,7 +16,8 @@ from src.security import (
 )
 from src.auth_tasks.send_confirm_email import send_email
 
-from src.db import database, user_table
+from src.db import database, user_table, post_table, likes_table
+import sqlalchemy
 
 router = APIRouter()
 
@@ -56,7 +57,8 @@ async def register_user(user: UserRegister, request: Request):
         email=user.email,
         password=hashed_password,
         bio=user.bio,
-        location=user.location,
+        location=getattr(user, "location", None),
+        avatar_url=user.avatar_url,
     )
 
     await database.execute(query)
@@ -134,6 +136,19 @@ async def get_current_user_info(
     """
     Get current authenticated user information
     """
+    # Compute aggregate fields
+    posts_count_query = (
+        sqlalchemy.select(sqlalchemy.func.count())
+        .select_from(post_table)
+        .where(post_table.c.user_id == current_user.id)
+    )
+    likes_received_query = (
+        sqlalchemy.select(sqlalchemy.func.count())
+        .select_from(likes_table.join(post_table, likes_table.c.post_id == post_table.c.id))
+        .where(post_table.c.user_id == current_user.id)
+    )
+    posts_count = await database.fetch_val(posts_count_query) or 0
+    likes_received = await database.fetch_val(likes_received_query) or 0
     return {
         "id": current_user.id,
         "username": current_user.username,
@@ -141,9 +156,66 @@ async def get_current_user_info(
         "confirmed": current_user.confirmed,
         "bio": current_user.bio,
         "location": current_user.location,
+        "avatar_url": current_user.avatar_url,
         "created_at": current_user.created_at,
+        "posts_count": posts_count,
+        "likes_received": likes_received,
     }
 
+
+@router.patch("/api/user/me/", status_code=200)
+async def update_current_user_profile(
+    payload: UserProfileUpdate,
+    current_user: Annotated[UserI, Depends(get_current_user)],
+):
+    # Only include fields explicitly provided (allow clearing by sending empty/whitespace)
+    update_data = {}
+    if "bio" in payload.model_fields_set:
+        update_data["bio"] = payload.bio
+    if "location" in payload.model_fields_set:
+        update_data["location"] = payload.location
+
+    if not update_data:
+        return {"detail": "No fields to update"}
+
+    query = (
+        user_table.update()
+        .where(user_table.c.id == current_user.id)
+        .values(**update_data)
+    )
+    await database.execute(query)
+
+    # Reuse the same response shape as get_current_user_info for consistency
+    # Fetch aggregates
+    posts_count_query = (
+        sqlalchemy.select(sqlalchemy.func.count())
+        .select_from(post_table)
+        .where(post_table.c.user_id == current_user.id)
+    )
+    likes_received_query = (
+        sqlalchemy.select(sqlalchemy.func.count())
+        .select_from(likes_table.join(post_table, likes_table.c.post_id == post_table.c.id))
+        .where(post_table.c.user_id == current_user.id)
+    )
+    posts_count = await database.fetch_val(posts_count_query) or 0
+    likes_received = await database.fetch_val(likes_received_query) or 0
+
+    # Fetch fresh user row
+    refreshed = await database.fetch_one(
+        user_table.select().where(user_table.c.id == current_user.id)
+    )
+    return {
+        "id": refreshed.id,
+        "username": refreshed.username,
+        "email": refreshed.email,
+        "confirmed": refreshed.confirmed,
+        "bio": refreshed.bio,
+        "location": refreshed.location,
+        "avatar_url": refreshed.avatar_url,
+        "created_at": refreshed.created_at,
+        "posts_count": posts_count,
+        "likes_received": likes_received,
+    }
 
 @router.get("/api/confirm/{token}")
 async def confirm_email(token: str):
