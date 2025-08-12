@@ -251,20 +251,20 @@ async def delete_account(
     from src.db import comment_table
 
     async with database.transaction():
-        # Delete all comments made by the user
+        # 1. Delete all comments made by the user (prevents orphaned comments)
         await database.execute(
             comment_table.delete().where(comment_table.c.user_id == current_user.id)
         )
-        # Delete all likes made by the user
+        # 2. Delete all likes made by the user
         await database.execute(
             likes_table.delete().where(likes_table.c.user_id == current_user.id)
         )
-        # Delete all posts made by the user (and comments on those posts)
+        # 3. Delete all comments and likes on the user's posts, then the posts
         user_posts = await database.fetch_all(
             post_table.select().where(post_table.c.user_id == current_user.id)
         )
         for post in user_posts:
-            # Delete comments on each post
+            # Delete comments on each post (prevents orphaned comments if post id reused)
             await database.execute(
                 comment_table.delete().where(comment_table.c.post_id == post.id)
             )
@@ -272,14 +272,16 @@ async def delete_account(
             await database.execute(
                 likes_table.delete().where(likes_table.c.post_id == post.id)
             )
+        # 4. Delete all posts made by the user
         await database.execute(
             post_table.delete().where(post_table.c.user_id == current_user.id)
         )
-        # Finally, delete the user
+        # 5. Finally, delete the user
         await database.execute(
             user_table.delete().where(user_table.c.id == current_user.id)
         )
-    # Optionally: Invalidate tokens/sessions here
+    # 6. Invalidate all tokens/sessions for this user (OWASP A7)
+    # TODO: Implement token/session invalidation if using JWT or session store
     return
 
 
@@ -299,5 +301,8 @@ async def change_password(
         .where(user_table.c.id == current_user.id)
         .values(password=new_hashed)
     )
-    # Optionally: Invalidate other sessions/tokens here
+    # Invalidate all other sessions/tokens for this user
+    # TODO: Implement token/session invalidation if using JWT or session store
+    # Log the password change event (no sensitive data)
+    logger.info(f"Password changed for user_id={current_user.id}")
     return {"detail": "Password changed successfully."}
