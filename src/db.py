@@ -46,7 +46,15 @@ comment_table = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("body", sqlalchemy.String),
     sqlalchemy.Column("post_id", sqlalchemy.ForeignKey("posts.id"), nullable=False),
-    sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("users.id"), nullable=False)
+    sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("users.id"), nullable=False),
+    # Denormalized username snapshot to avoid joins and preserve history on username change
+    sqlalchemy.Column("username", sqlalchemy.ForeignKey("users.username")),
+    sqlalchemy.Column(
+        "created_at",
+        sqlalchemy.DateTime(timezone=True),
+        server_default=sqlalchemy.text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    ),
 )
 
 connect_args = {"check_same_thread": False} if "sqlite" in config.DATABASE_URI else {}
@@ -76,5 +84,20 @@ with engine.begin() as conn:
         conn.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_likes_post_user ON likes (post_id, user_id)"
+            )
+        )
+    # Ensure comments table has expected columns
+    comment_columns = {col["name"] for col in inspector.get_columns("comments")}
+    if "created_at" not in comment_columns:
+        conn.execute(
+            text(
+                "ALTER TABLE comments ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL"
+            )
+        )
+    if "username" not in comment_columns:
+        # username is optional (nullable) to support existing rows
+        conn.execute(
+            text(
+                "ALTER TABLE comments ADD COLUMN username VARCHAR"
             )
         )

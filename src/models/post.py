@@ -46,6 +46,19 @@ class Comment(CommentI):
 
     id: int
     user_id: int
+    username: Optional[str] = None
+    created_at: datetime
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def ensure_timezone_aware_utc(cls, value):
+        if isinstance(value, datetime):
+            dt = value
+        else:
+            dt = datetime.fromisoformat(str(value))
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
 
 class UserPostWithComments(BaseModel):
     post: UserPostWithLikes

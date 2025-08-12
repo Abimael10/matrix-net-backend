@@ -84,11 +84,19 @@ async def create_comment(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
-    data = {**comment.model_dump(), "user_id": current_user.id}
+    data = {
+        **comment.model_dump(),
+        "user_id": current_user.id,
+        "username": current_user.username,
+    }
     query = comment_table.insert().values(data)
     last_record_id = await database.execute(query)
 
-    return {**data, "id": last_record_id, }
+    # Fetch inserted record to include server defaults like created_at
+    created = await database.fetch_one(
+        comment_table.select().where(comment_table.c.id == last_record_id)
+    )
+    return created
 
 #GET a single post comments
 @router.get("/api/posts/{post_id}/comment", response_model=list[Comment], status_code=200)
