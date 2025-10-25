@@ -2,7 +2,7 @@ import logging
 from typing import Annotated
 
 import sqlalchemy
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
 from src.auth_tasks.send_confirm_email import send_email
 from src.db import database, likes_table, post_table, user_table
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/api/register", status_code=201)
-async def register_user(user: UserRegister, request: Request):
+async def register_user(user: UserRegister, request: Request, background_tasks: BackgroundTasks):
     if await get_user_by_email(user.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -75,8 +75,12 @@ async def register_user(user: UserRegister, request: Request):
     <a href="{confirmation_link}">Confirm Email</a>
     """
 
-    send_email(
-        subject="Sentinel - Email Confirmation", recipient=user.email, body=email_body
+    # Send email in background to avoid blocking the response
+    background_tasks.add_task(
+        send_email,
+        subject="Sentinel - Email Confirmation",
+        recipient=user.email,
+        body=email_body
     )
 
     return {"detail": "User created. A confirmation email has been sent."}

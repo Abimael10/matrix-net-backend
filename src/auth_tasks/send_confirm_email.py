@@ -1,50 +1,56 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import logging
+import httpx
 
 from src.config import config
 
+logger = logging.getLogger(__name__)
 
-def send_email(subject: str, recipient: str, body: str):
+
+async def send_email(subject: str, recipient: str, body: str):
     """
-    Sends an email using the Mailtrap SMTP configuration.
+    Sends an email using the Mailtrap API.
 
     Args:
         subject (str): The subject of the email.
         recipient (str): The recipient's email address.
         body (str): The HTML body of the email.
     """
-    # Create the email message
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = config.MAIL_FROM
-    msg["To"] = recipient
+    if not config.MAIL_API_TOKEN:
+        logger.error("MAIL_API_TOKEN is not configured. Cannot send email.")
+        return
 
-    # Create the plain-text and HTML version of your message
-    text = f"Hello, please confirm your email by clicking the link: {body}"
-
-    # Attach parts into message container.
-    # The email client will try to render the last part first
-    msg.attach(MIMEText(text, "plain"))
-    msg.attach(MIMEText(body, "html"))
-
-    # Debug: Print config and recipient info before sending
-    print("--- Email Debug Info ---")
-    print(f"MAIL_SERVER: {config.MAIL_SERVER}")
-    print(f"MAIL_PORT: {config.MAIL_PORT}")
-    print(f"MAIL_USERNAME: {config.MAIL_USERNAME}")
-    print(f"MAIL_FROM: {config.MAIL_FROM}")
-    print(f"Recipient: {recipient}")
-    print(f"Subject: {subject}")
-    print("------------------------")
-
-    # Connect to Mailtrap and send the email
     try:
-        with smtplib.SMTP(config.MAIL_SERVER, config.MAIL_PORT) as server:
-            server.starttls()
-            server.login(config.MAIL_USERNAME, config.MAIL_PASSWORD)
-            server.sendmail(config.MAIL_FROM, recipient, msg.as_string())
-        print("Email sent successfully.")
-    except smtplib.SMTPException as e:
-        print(f"Error sending email: {e}")
-        raise
+        url = "https://send.api.mailtrap.io/"
+
+        payload = {
+            "from": {
+                "email": config.MAIL_FROM,
+                "name": config.MAIL_FROM_NAME
+            },
+            "to": [{"email": recipient}],
+            "subject": subject,
+            "html": body,
+            "category": "Email Confirmation"
+        }
+
+        headers = {
+            "Authorization": f"Bearer {config.MAIL_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        logger.info(f"Attempting to send email to {recipient} via Mailtrap API")
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+
+        logger.info(f"Email sent successfully to {recipient}. Status: {response.status_code}")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error sending email to {recipient}: {e.response.status_code} - {e.response.text}")
+        # Don't raise - let registration succeed even if email fails
+    except httpx.RequestError as e:
+        logger.error(f"Request error sending email to {recipient}: {e}")
+        # Don't raise - let registration succeed even if email fails
+    except Exception as e:
+        logger.error(f"Unexpected error sending email to {recipient}: {e}")
+        # Don't raise - let registration succeed even if email fails

@@ -17,8 +17,10 @@ class GlobalConfig(BaseConfig):
     MAIL_USERNAME: Optional[str] = None
     MAIL_PASSWORD: Optional[str] = None
     MAIL_FROM: Optional[str] = None
-    MAIL_SERVER: str = "live.smtp.mailtrap.io"
-    MAIL_PORT: int = 587
+    MAIL_FROM_NAME: Optional[str] = "Matrix.net"
+    #MAIL_SERVER: str = "live.smtp.mailtrap.io"
+    #MAIL_PORT: int = 587
+    MAIL_API_TOKEN: Optional[str] = None
 
     #Backblaze B2 configuration
     B2_KEY_ID: Optional[str] = None
@@ -43,6 +45,8 @@ class ProdConfig(GlobalConfig):
     MAIL_USERNAME: Optional[str] = Field(default=None, validation_alias="MAIL_USERNAME")
     MAIL_PASSWORD: Optional[str] = Field(default=None, validation_alias="MAIL_PASSWORD")
     MAIL_FROM: Optional[str] = Field(default=None, validation_alias="MAIL_FROM")
+    MAIL_FROM_NAME: Optional[str] = Field(default="Sentinel Social", validation_alias="MAIL_FROM_NAME")
+    MAIL_API_TOKEN: Optional[str] = Field(default=None, validation_alias="MAIL_API_TOKEN")
 
     B2_KEY_ID: Optional[str] = Field(default=None, validation_alias="B2_KEY_ID")
     B2_APPLICATION_KEY: Optional[str] = Field(default=None, validation_alias="B2_APPLICATION_KEY")
@@ -65,6 +69,10 @@ class ProdConfig(GlobalConfig):
             self.MAIL_PASSWORD = os.getenv("PROD_MAIL_PASSWORD")
         if not self.MAIL_FROM:
             self.MAIL_FROM = os.getenv("PROD_MAIL_FROM")
+        if not self.MAIL_FROM_NAME:
+            self.MAIL_FROM_NAME = os.getenv("PROD_MAIL_FROM_NAME") or "Sentinel Social"
+        if not self.MAIL_API_TOKEN:
+            self.MAIL_API_TOKEN = os.getenv("PROD_MAIL_API_TOKEN")
         if not self.B2_KEY_ID:
             self.B2_KEY_ID = os.getenv("PROD_B2_KEY_ID")
         if not self.B2_APPLICATION_KEY:
@@ -86,6 +94,8 @@ class TestConfig(GlobalConfig):
     MAIL_USERNAME: str = "test_username"
     MAIL_PASSWORD: str = "test_password"
     MAIL_FROM: str = "test@email.com"
+    MAIL_FROM_NAME: str = "Test Sender"
+    MAIL_API_TOKEN: str = "test_api_token"
 
     model_config = SettingsConfigDict(env_prefix="TEST_", extra="ignore")
 
