@@ -96,24 +96,32 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(password_bytes, hashed_password)
 
 async def get_user_by_email(email: str):
-    logger.debug("Fetching user from the database", extra={"email": email})
+    logger.info(f"Fetching user from database for email: {email}")
     query = user_table.select().where(user_table.c.email == email)
     result = await database.fetch_one(query)
-    
+
     if result:
+        logger.info(f"User found for email {email}: user_id={result.id}")
         return result
+    else:
+        logger.info(f"No user found for email {email}")
+        return None
 
 async def get_user(email: str):
     """Compatibility helper used in tests."""
     return await get_user_by_email(email)
 
 async def get_user_by_username(username: str):
-    logger.debug("Fetching username from the database", extra={"username":username})
+    logger.info(f"Fetching user from database for username: {username}")
     query = user_table.select().where(user_table.c.username == username)
     result = await database.fetch_one(query)
 
     if result:
+        logger.info(f"User found for username {username}: user_id={result.id}")
         return result
+    else:
+        logger.info(f"No user found for username {username}")
+        return None
 
 async def authenticate_user(email: str, password: str):
     user = await get_user_by_email(email)

@@ -27,24 +27,26 @@ logger = logging.getLogger(__name__)
 
 @router.post("/api/register", status_code=201)
 async def register_user(user: UserRegister, request: Request, background_tasks: BackgroundTasks):
-    logger.info(f"Registration attempt for email: {user.email}")
+    logger.info(f"=== REGISTRATION START === Email: {user.email}")
 
     # Check if user already exists by email
     existing_user = await get_user_by_email(user.email)
-    if existing_user:
-        logger.warning(f"Registration failed: email {user.email} already exists (user_id: {existing_user.id})")
+    logger.info(f"get_user_by_email returned: {existing_user} (type: {type(existing_user)})")
+
+    if existing_user is not None:
+        logger.error(f"REGISTRATION BLOCKED: email {user.email} already exists (user_id: {existing_user.id})")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with that email already exists",
         )
 
-    logger.debug(f"No existing user found for email: {user.email}")
+    logger.info(f"Email {user.email} is available - proceeding with registration")
 
     # If username is provided, ensure it is unique; else derive from email
     if user.username:
         existing_username = await get_user_by_username(user.username)
-        if existing_username:
-            logger.warning(f"Registration failed: username {user.username} already exists")
+        if existing_username is not None:
+            logger.error(f"REGISTRATION BLOCKED: username {user.username} already exists")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already exists",
@@ -56,12 +58,14 @@ async def register_user(user: UserRegister, request: Request, background_tasks: 
         candidate = base_username
         suffix = 1
         # Ensure uniqueness by appending numeric suffix if needed
-        while await get_user_by_username(candidate):
+        check_username = await get_user_by_username(candidate)
+        while check_username is not None:
             suffix += 1
             candidate = f"{base_username}{suffix}"
+            check_username = await get_user_by_username(candidate)
         username = candidate
 
-    logger.info(f"Creating new user with email: {user.email}, username: {username}")
+    logger.info(f"Username '{username}' is available - creating user")
 
     hashed_password = get_password_hash(user.password)
     query = user_table.insert().values(
@@ -306,46 +310,6 @@ async def get_database_info():
         "total_users": user_count,
         "is_connected": database.is_connected,
     }
-
-
-@router.post("/api/admin/clear-all-users")
-async def clear_all_users():
-    """
-    DANGEROUS: Deletes ALL users and related data from the database.
-    Use this to reset the database completely.
-    WARNING: This action is IRREVERSIBLE!
-    """
-    try:
-        logger.warning("CLEARING ALL USERS FROM DATABASE - This action was requested via API")
-
-        # Delete all data in correct order (respecting foreign keys)
-        from src.db import comment_table
-
-        async with database.transaction():
-            # Delete in child-to-parent order
-            deleted_comments = await database.execute(comment_table.delete())
-            deleted_likes = await database.execute(likes_table.delete())
-            deleted_posts = await database.execute(post_table.delete())
-            deleted_users = await database.execute(user_table.delete())
-
-            logger.warning(f"Deleted {deleted_users} users, {deleted_posts} posts, {deleted_likes} likes, {deleted_comments} comments")
-
-        return {
-            "status": "success",
-            "message": "All users and related data deleted",
-            "deleted": {
-                "users": deleted_users,
-                "posts": deleted_posts,
-                "likes": deleted_likes,
-                "comments": deleted_comments
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error clearing database: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear database: {str(e)}"
-        )
 
 
 # User settings models
