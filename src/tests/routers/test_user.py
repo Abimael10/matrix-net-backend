@@ -52,9 +52,9 @@ async def test_login_user_not_exists(async_client: AsyncClient):
     assert response.status_code == 401
 
 @pytest.mark.anyio
-async def test_login_user_not_confirmed(
+async def test_login_registered_user(
     async_client: AsyncClient,
-    registered_user: dict
+    registered_user: dict  # Now users are auto-confirmed, so this test should succeed
 ):
     response = await async_client.post(
         "/api/token",
@@ -64,10 +64,10 @@ async def test_login_user_not_confirmed(
         }
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 200  # Now succeeds because users are auto-confirmed
 
 @pytest.mark.anyio
-async def test_login_user(async_client: AsyncClient, confirmed_user: dict):
+async def test_login_confirmed_user(async_client: AsyncClient, confirmed_user: dict):
     response = await async_client.post(
         "/api/token",
         json={

@@ -2,16 +2,14 @@ import logging
 from typing import Annotated
 
 import sqlalchemy
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
-from src.auth_tasks.send_confirm_email import send_email
 from src.db import database, likes_table, post_table, user_table
 from src.models.user import UserI, UserLogin, UserProfileUpdate, UserRegister
 from src.models.user_settings import ChangePasswordRequest, DeleteAccountRequest
 from src.security import (
     authenticate_user,
     create_access_token,
-    create_confirmation_token,
     create_refresh_token,
     get_current_user,
     get_password_hash,
@@ -26,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/api/register", status_code=201)
-async def register_user(user: UserRegister, request: Request, background_tasks: BackgroundTasks):
+async def register_user(user: UserRegister, background_tasks: BackgroundTasks):
     logger.info(f"=== REGISTRATION START === Email: {user.email}")
 
     # Check if user already exists by email
@@ -75,31 +73,13 @@ async def register_user(user: UserRegister, request: Request, background_tasks: 
         bio=user.bio,
         location=getattr(user, "location", None),
         avatar_url=user.avatar_url,
+        confirmed=True,  # Auto-confirm users - no email verification required
     )
 
     user_id = await database.execute(query)
     logger.info(f"User created successfully with ID: {user_id}, email: {user.email}")
 
-    # Generate confirmation token and send email
-    confirmation_token = create_confirmation_token(user.email)
-    confirmation_link = f"{request.url_for('confirm_email', token=confirmation_token)}"
-
-    # Basic HTML email body
-    email_body = f"""
-    <h1>Email Confirmation</h1>
-    <p>Please click the link below to confirm your email address:</p>
-    <a href="{confirmation_link}">Confirm Email</a>
-    """
-
-    # Send email in background to avoid blocking the response
-    background_tasks.add_task(
-        send_email,
-        subject="Sentinel - Email Confirmation",
-        recipient=user.email,
-        body=email_body
-    )
-
-    return {"detail": "User created. A confirmation email has been sent."}
+    return {"detail": "User created successfully. No email verification required."}
 
 
 @router.post("/api/token")
@@ -130,9 +110,9 @@ async def refresh_token(refresh_data: dict):
         # Validate refresh token and get email
         email = get_subject_for_token_type(refresh_token, "refresh")
 
-        # Check if user still exists and is confirmed
+        # Check if user still exists
         user = await get_user_by_email(email)
-        if not user or not user.confirmed:
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
             )
@@ -244,36 +224,6 @@ async def update_current_user_profile(
     }
 
 
-@router.get("/api/confirm/{token}")
-async def confirm_email(token: str):
-    logger.info(f"Email confirmation attempt with token")
-
-    # Validate token and extract email
-    email = get_subject_for_token_type(token, "confirmation")
-    logger.info(f"Confirmation token valid for email: {email}")
-
-    # Check if user exists
-    user = await get_user_by_email(email)
-    if not user:
-        logger.error(f"Confirmation failed: no user found with email {email}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found. The account may have been deleted or the link is from an old database.",
-        )
-
-    # Check if already confirmed
-    if user.confirmed:
-        logger.info(f"User {email} is already confirmed")
-        return {"detail": "Email already confirmed. You may close this window."}
-
-    # Confirm the user
-    query = (
-        user_table.update().where(user_table.c.email == email).values(confirmed=True)
-    )
-    await database.execute(query)
-
-    logger.info(f"User {email} confirmed successfully")
-    return {"detail": "Email confirmed successfully. You may now log in."}
 
 
 @router.get("/api/admin/database-info")

@@ -32,23 +32,11 @@ def access_token_expire_minutes() -> int:
 def refresh_token_expire_days() -> int:
     return 10080  # 7 days
 
-def confirm_token_expire_minutes() -> int:
-    return 1440 #24 hours
-
 def create_access_token(email: str):
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
         minutes=access_token_expire_minutes()
     )
     jwt_data = {"sub": email, "exp": expire, "type": "access"}
-    encoded_jwt = jwt.encode(jwt_data, KEY, algorithm = ALGORITHM)
-
-    return encoded_jwt
-
-def create_confirmation_token(email: str):
-    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
-        minutes=confirm_token_expire_minutes()
-    )
-    jwt_data = {"sub": email, "exp": expire, "type": "confirmation"}
     encoded_jwt = jwt.encode(jwt_data, KEY, algorithm = ALGORITHM)
 
     return encoded_jwt
@@ -64,7 +52,7 @@ def create_refresh_token(email: str):
     return encoded_jwt
 
 def get_subject_for_token_type(
-    token: str, type: Literal["access", "confirmation", "refresh"]
+    token: str, type: Literal["access", "refresh"]
 ) -> str:
     try:
         payload = jwt.decode(token, key=KEY, algorithms=[ALGORITHM])
@@ -128,13 +116,11 @@ async def authenticate_user(email: str, password: str):
 
     if not user:
         raise create_credentials_exception("Invalid email or password")
-    
+
     if not verify_password(password, user.password):
         raise create_credentials_exception("Invalid email or password")
-    
-    if not user.confirmed:
-        raise create_credentials_exception("User has not confirmed email")
-    
+
+    # No email confirmation required - all registered users are automatically confirmed
     return user
 
 #Adding the dependency injection to reduce the amount of code related to adding this scheme

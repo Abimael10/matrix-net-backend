@@ -28,7 +28,7 @@ user_table = sqlalchemy.Table(
     sqlalchemy.Column("username", sqlalchemy.String, unique=True),
     sqlalchemy.Column("email", sqlalchemy.String, unique=True),
     sqlalchemy.Column("password", sqlalchemy.String),
-    sqlalchemy.Column("confirmed", sqlalchemy.Boolean, default=False),
+    sqlalchemy.Column("confirmed", sqlalchemy.Boolean, default=True),
     sqlalchemy.Column("bio", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("location", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("avatar_url", sqlalchemy.String, nullable=True),
@@ -139,3 +139,5 @@ if config.DATABASE_URI and "sqlite" in config.DATABASE_URI:
         if "username" not in comment_columns:
             # username is optional (nullable) to support existing rows
             conn.execute(text("ALTER TABLE comments ADD COLUMN username VARCHAR"))
+        # Migrate existing users to be confirmed if they were not already
+        conn.execute(text("UPDATE users SET confirmed = 1 WHERE confirmed = 0"))
