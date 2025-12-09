@@ -13,13 +13,16 @@ class GlobalConfig(BaseConfig):
     DB_FORCE_ROLL_BACK: bool = False
     SECRET_KEY: Optional[str] = None
 
-    # Mailtrap configuration
+    # Mail configuration is no longer used after removal of email verification
+    # These fields are kept for backward compatibility but not used by the application
     MAIL_USERNAME: Optional[str] = None
     MAIL_PASSWORD: Optional[str] = None
     MAIL_FROM: Optional[str] = None
     MAIL_FROM_NAME: Optional[str] = "Matrix.net"
-    #MAIL_SERVER: str = "live.smtp.mailtrap.io"
-    #MAIL_PORT: int = 587
+    #MAIL_SERVER: Optional[str] = "localhost"
+    #MAIL_PORT: Optional[int] = 1025
+    #MAIL_USE_TLS: Optional[bool] = False
+    #MAIL_USE_SSL: Optional[bool] = False
     MAIL_API_TOKEN: Optional[str] = None
 
     #Backblaze B2 configuration
@@ -41,7 +44,8 @@ class ProdConfig(GlobalConfig):
         validation_alias="SECRET_KEY"  # Standard name
     )
 
-    # Override other fields to try standard names first, then prefixed
+    # Email configuration is no longer used after removal of email verification
+    # These fields are kept for backward compatibility but not used by the application
     MAIL_USERNAME: Optional[str] = Field(default=None, validation_alias="MAIL_USERNAME")
     MAIL_PASSWORD: Optional[str] = Field(default=None, validation_alias="MAIL_PASSWORD")
     MAIL_FROM: Optional[str] = Field(default=None, validation_alias="MAIL_FROM")
@@ -63,6 +67,7 @@ class ProdConfig(GlobalConfig):
         # Fallback to prefixed env vars if standard ones aren't set
         if not self.SECRET_KEY:
             self.SECRET_KEY = os.getenv("PROD_SECRET_KEY")
+        # Email configuration is no longer used but kept for backward compatibility
         if not self.MAIL_USERNAME:
             self.MAIL_USERNAME = os.getenv("PROD_MAIL_USERNAME")
         if not self.MAIL_PASSWORD:
