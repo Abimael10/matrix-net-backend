@@ -29,15 +29,17 @@ class MessageBus:
         message_id = uuid.uuid4()
         logger.debug("message %s received: %s", message_id, message)
 
-        while queue:
-            message = queue.pop(0)
-            if isinstance(message, events.Event):
-                self._handle_event(message, queue, message_id)
-            elif isinstance(message, commands.Command):
-                result = self._handle_command(message, queue, message_id)
-                results.append(result)
-            else:
-                raise Exception(f"{message} was not an Event or Command")
+        # Ensure UoW opens a session/repositories per message
+        with self.uow:
+            while queue:
+                message = queue.pop(0)
+                if isinstance(message, events.Event):
+                    self._handle_event(message, queue, message_id)
+                elif isinstance(message, commands.Command):
+                    result = self._handle_command(message, queue, message_id)
+                    results.append(result)
+                else:
+                    raise Exception(f"{message} was not an Event or Command")
 
         return results
 
