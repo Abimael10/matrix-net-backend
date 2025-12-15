@@ -14,9 +14,9 @@ from src.config import config
 from src.db import database
 from src.log_config import configure_logging
 
-from src.routers.post import router as post_router
-from src.routers.user import router as user_router
-from src.routers.upload import router as upload_router
+from src.entrypoints.routers.post import router as post_router
+from src.entrypoints.routers.user import router as user_router
+from src.entrypoints.routers.upload import router as upload_router
 
 sentry_sdk.init(
     dsn=config.SENTRY_DSN,
