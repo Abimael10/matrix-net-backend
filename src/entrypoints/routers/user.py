@@ -14,6 +14,7 @@ from src.security import (
     create_refresh_token,
     get_current_user,
     get_subject_for_token_type,
+    get_user_by_email,
 )
 from src.domain import commands, exceptions
 from src.views import users as user_views
@@ -64,17 +65,19 @@ async def login(user: UserLogin):
 @router.post("/api/token/refresh/")
 async def refresh_token(refresh_data: dict):
     """
-    Refresh access token using refresh token
+    Refresh access token using refresh token.
+    Expected payload: {"refresh_token": "<token>"}.
     """
-    refresh_token = refresh_data.get("refresh")
-    if not refresh_token:
+    refresh_token_value = refresh_data.get("refresh_token")
+    if not refresh_token_value:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Refresh token is required"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Refresh token is required (payload key: 'refresh_token')",
         )
 
     try:
         # Validate refresh token and get email
-        email = get_subject_for_token_type(refresh_token, "refresh")
+        email = get_subject_for_token_type(refresh_token_value, "refresh")
 
         # Check if user still exists
         user = await get_user_by_email(email)
@@ -86,7 +89,7 @@ async def refresh_token(refresh_data: dict):
         # Create new access token
         new_access_token = create_access_token(email)
 
-        return {"access": new_access_token, "token_type": "bearer"}
+        return {"access_token": new_access_token, "token_type": "bearer"}
 
     except HTTPException:
         raise
