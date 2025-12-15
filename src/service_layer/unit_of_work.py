@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from src.config import config
 from src.db import metadata
 from src.service_layer import repository
+from src.adapters import repository as sql_repo
 
 
 class AbstractUnitOfWork(abc.ABC):
@@ -53,9 +54,8 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self.session_factory()
-        # repositories would be initialized here once implemented
-        # e.g., self.users = SqlAlchemyUserRepository(self.session)
-        #       self.posts = SqlAlchemyPostRepository(self.session)
+        self.users = sql_repo.SqlAlchemyUserRepository(self.session)
+        self.posts = sql_repo.SqlAlchemyPostRepository(self.session)
         return super().__enter__()
 
     def __exit__(self, *args) -> None:
