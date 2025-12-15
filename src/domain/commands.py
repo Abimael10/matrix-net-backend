@@ -1,9 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Optional
 
 
 class Command:
     """Marker base class for commands."""
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        """
+        Tolerant reader: ignore extra fields when constructing commands.
+        """
+        allowed = {f.name for f in fields(cls) if f.init}
+        filtered = {k: v for k, v in data.items() if k in allowed}
+        return cls(**filtered)
 
 
 @dataclass

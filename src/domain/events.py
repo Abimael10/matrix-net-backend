@@ -1,8 +1,17 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 
 class Event:
     """Marker base class for domain events."""
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        """
+        Tolerant reader for inbound events: ignore unknown fields.
+        """
+        allowed = {f.name for f in fields(cls) if f.init}
+        filtered = {k: v for k, v in data.items() if k in allowed}
+        return cls(**filtered)
 
 
 @dataclass
