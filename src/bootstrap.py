@@ -4,7 +4,6 @@ from functools import partial
 from typing import Dict, List, Type
 
 from src.adapters.notifications import LogNotifier, AbstractNotifier
-from src.adapters.repository import SqlAlchemyPostRepository, SqlAlchemyUserRepository
 from src.adapters.storage import AbstractFileStorage, B2FileStorage
 from src.domain import commands, events
 from src.service_layer import handlers, messagebus, unit_of_work
@@ -18,6 +17,10 @@ def bootstrap(
     notifier: AbstractNotifier | None = None,
     file_storage: AbstractFileStorage | None = None,
 ) -> MessageBus:
+    """
+    Configure and return a MessageBus.
+    Allows overriding UoW/notifier/storage for tests.
+    """
     uow = uow or SqlAlchemyUnitOfWork()
     notifier = notifier or LogNotifier()
     file_storage = file_storage or B2FileStorage()
@@ -36,8 +39,19 @@ def bootstrap(
     }
 
     event_handlers: Dict[Type[events.Event], List[callable]] = {
-        events.UserRegistered: [partial(handlers.handle_user_registered, uow=uow)],
+        events.UserRegistered: [partial(handlers.handle_user_registered, uow=uow, notifier=notifier)],
         events.FileUploaded: [partial(handlers.handle_file_uploaded, uow=uow)],
     }
 
     return MessageBus(uow=uow, event_handlers=event_handlers, command_handlers=command_handlers)
+
+
+# Helper to get a shared message bus (used by routers/tests)
+_global_bus: MessageBus | None = None
+
+
+def get_message_bus() -> MessageBus:
+    global _global_bus
+    if _global_bus is None:
+        _global_bus = bootstrap()
+    return _global_bus

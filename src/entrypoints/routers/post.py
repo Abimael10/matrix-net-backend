@@ -27,7 +27,8 @@ class PostSorting(str, Enum):
 
 
 def get_bus(request: Request):
-    return request.app.state.bus
+    from src.bootstrap import get_message_bus
+    return get_message_bus()
 
 
 @router.post("/api/posts", status_code=201)

@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_bus(request: Request):
-    return request.app.state.bus
+    # Use global helper for now
+    from src.bootstrap import get_message_bus
+    return get_message_bus()
 
 
 @router.post("/api/register", status_code=201)

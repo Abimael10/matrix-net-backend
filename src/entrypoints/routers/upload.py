@@ -12,7 +12,8 @@ router = APIRouter()
 
 
 def get_bus(request: Request):
-    return request.app.state.bus
+    from src.bootstrap import get_message_bus
+    return get_message_bus()
 
 CHUNK_SIZE = 1024 * 1024
 
