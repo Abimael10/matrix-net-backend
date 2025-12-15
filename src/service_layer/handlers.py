@@ -123,9 +123,14 @@ def delete_account(cmd: commands.DeleteAccount, uow: unit_of_work.AbstractUnitOf
 # --- Event handlers (stubs/placeholders) ---
 
 
-def handle_user_registered(event: events.UserRegistered, uow: unit_of_work.AbstractUnitOfWork):
+def handle_user_registered(event: events.UserRegistered, uow: unit_of_work.AbstractUnitOfWork, notifier=None):
     logger.info("User registered: %s", event)
-    # Placeholder for notifications/read-model updates
+    if notifier:
+        notifier.send(
+            to=event.email,
+            subject="Welcome to Matrix-Net",
+            body=f"Hi {event.username}, your account has been created.",
+        )
 
 
 def handle_file_uploaded(event: events.FileUploaded, uow: unit_of_work.AbstractUnitOfWork):

@@ -12,9 +12,11 @@ def session():
     engine = create_engine("sqlite:///:memory:", future=True)
     metadata.create_all(engine)
     Session = sessionmaker(bind=engine, expire_on_commit=False)
-    with Session() as sess:
-        yield sess
-    metadata.drop_all(engine)
+    try:
+        with Session() as sess:
+            yield sess
+    finally:
+        metadata.drop_all(engine)
 
 
 def test_user_repository_roundtrip(session):

@@ -34,7 +34,7 @@ class Like:
 # --- Aggregates ---
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class UserAggregate:
     user: User
     bio: Optional[str] = None
@@ -63,14 +63,14 @@ class UserAggregate:
         self.password_hash = new_password_hash
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class PostAggregate:
     id: int | None
     user_id: int
     username: str
     body: str
-    comments: Set[Comment] = field(default_factory=set)
-    likes: Set[Like] = field(default_factory=set)
+    comments: Set[Comment] = field(default_factory=set, compare=False, hash=False)
+    likes: Set[Like] = field(default_factory=set, compare=False, hash=False)
 
     def add_comment(self, comment_id: int, user_id: int, body: str) -> Comment:
         if not body:
