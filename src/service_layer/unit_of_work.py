@@ -3,11 +3,9 @@ from __future__ import annotations
 import abc
 from typing import Iterable, Iterator, List
 
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.config import config
-from src.db import metadata
+from src.db import metadata, SessionLocal
 from src.service_layer import repository
 from src.adapters import repository as sql_repo
 
@@ -44,16 +42,17 @@ class AbstractUnitOfWork(abc.ABC):
 
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
+    _schema_initialized = False
+
     def __init__(self, session_factory: sessionmaker | None = None) -> None:
-        if session_factory is None:
-            engine = create_engine(config.DATABASE_URI)
-            session_factory = sessionmaker(bind=engine, expire_on_commit=False)
-        self.session_factory = session_factory
+        # Reuse the shared SessionLocal (configured in src.db) by default
+        self.session_factory = session_factory or SessionLocal
         self.session: Session | None = None
         self._committed = False
 
     def __enter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self.session_factory()
+        self._ensure_schema()
         self.users = sql_repo.SqlAlchemyUserRepository(self.session)
         self.posts = sql_repo.SqlAlchemyPostRepository(self.session)
         return super().__enter__()
@@ -71,6 +70,18 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
     def rollback(self) -> None:
         if self.session:
             self.session.rollback()
+
+    def _ensure_schema(self) -> None:
+        """
+        Guarantee tables exist for the configured database (helpful for SQLite dev/test).
+        Runs once per process.
+        """
+        if self.__class__._schema_initialized:
+            return
+        if self.session is None:
+            return
+        metadata.create_all(bind=self.session.bind)
+        self.__class__._schema_initialized = True
 
 
 class FakeUnitOfWork(AbstractUnitOfWork):
