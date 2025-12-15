@@ -17,3 +17,13 @@ class AbstractFileStorage(abc.ABC):
 class B2FileStorage(AbstractFileStorage):
     def upload(self, local_path: str, file_name: str) -> str:
         return b2.b2_upload_file(local_file=local_path, file_name=file_name)
+
+
+class FakeFileStorage(AbstractFileStorage):
+    def __init__(self):
+        self.uploads = []
+
+    def upload(self, local_path: str, file_name: str) -> str:
+        url = f"https://fake.local/{file_name}"
+        self.uploads.append((local_path, file_name, url))
+        return url

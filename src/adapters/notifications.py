@@ -15,3 +15,11 @@ class AbstractNotifier(abc.ABC):
 class LogNotifier(AbstractNotifier):
     def send(self, to: str, subject: str, body: str) -> None:
         logger.info("Notify %s | %s | %s", to, subject, body)
+
+
+class FakeNotifier(AbstractNotifier):
+    def __init__(self):
+        self.sent = []
+
+    def send(self, to: str, subject: str, body: str) -> None:
+        self.sent.append((to, subject, body))

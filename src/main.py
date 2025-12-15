@@ -19,12 +19,11 @@ from src.entrypoints.routers.post import router as post_router
 from src.entrypoints.routers.user import router as user_router
 from src.entrypoints.routers.upload import router as upload_router
 
-sentry_sdk.init(
-    dsn=config.SENTRY_DSN,
-    # Add data like request headers and IP for users,
-    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
-    send_default_pii=True,
-)
+if config.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=config.SENTRY_DSN,
+        send_default_pii=True,
+    )
 
 logger = logging.getLogger(__name__)
 
