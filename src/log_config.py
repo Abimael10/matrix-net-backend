@@ -25,7 +25,8 @@ def configure_logging() -> None:
             "disable_existing_loggers": False,
             "filters": {
                 "correlation_id": {
-                    "()": "asgi.correlation_id.CorrelationIdFilter",
+                    # asgi-correlation-id provides CorrelationIdFilter at top level
+                    "()": "asgi_correlation_id.CorrelationIdFilter",
                     "uuid_length": 8 if isinstance(config, DevConfig) else 32,
                     "default_value": "-"
                 },
