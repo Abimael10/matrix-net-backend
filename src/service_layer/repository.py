@@ -43,6 +43,9 @@ class AbstractUserRepository(abc.ABC):
 
     @abc.abstractmethod
     def _get_by_username(self, username: str) -> Optional[UserAggregate]: ...
+    
+    @abc.abstractmethod
+    def _delete(self, user_id: int) -> None: ...
 
 
 class AbstractPostRepository(abc.ABC):

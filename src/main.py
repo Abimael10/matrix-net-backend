@@ -13,6 +13,7 @@ import sentry_sdk
 from src.config import config
 from src.db import database
 from src.log_config import configure_logging
+from src.bootstrap import bootstrap
 
 from src.entrypoints.routers.post import router as post_router
 from src.entrypoints.routers.user import router as user_router
@@ -46,6 +47,9 @@ app.add_middleware(
 )
 
 app.add_middleware(CorrelationIdMiddleware)
+
+# create a singleton message bus and stash on app state
+app.state.bus = bootstrap()
 
 app.include_router(post_router)
 app.include_router(user_router)

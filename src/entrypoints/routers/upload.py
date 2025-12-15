@@ -2,17 +2,23 @@ import logging
 import tempfile
 
 import aiofiles
-from fastapi import APIRouter, HTTPException, UploadFile, status
-from src.libs.b2 import b2_upload_file
+from fastapi import APIRouter, HTTPException, UploadFile, status, Request
+from src.domain import commands
+from src.bootstrap import bootstrap
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+def get_bus(request: Request):
+    return request.app.state.bus
+
 CHUNK_SIZE = 1024 * 1024
 
 @router.post("/api/upload", status_code=201)
-async def upload_file(file: UploadFile):
+async def upload_file(file: UploadFile, request: Request):
+    bus = get_bus(request)
     try:
         with tempfile.NamedTemporaryFile() as temp_file:
             filename = temp_file.name
@@ -21,7 +27,8 @@ async def upload_file(file: UploadFile):
                 while chunk := await file.read(CHUNK_SIZE):
                     await f.write(chunk)
 
-            file_url = b2_upload_file(local_file=filename, file_name=file.filename)
+            cmd = commands.UploadFile(file_name=file.filename, local_path=filename)
+            [file_url] = bus.handle(cmd)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

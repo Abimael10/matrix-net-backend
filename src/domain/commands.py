@@ -24,7 +24,7 @@ class LoginUser(Command):
 
 @dataclass
 class CreatePost(Command):
-    post_id: int
+    post_id: Optional[int]
     user_id: int
     username: str
     body: str

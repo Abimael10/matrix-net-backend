@@ -65,7 +65,7 @@ class UserAggregate:
 
 @dataclass
 class PostAggregate:
-    id: int
+    id: int | None
     user_id: int
     username: str
     body: str

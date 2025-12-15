@@ -27,6 +27,9 @@ class FakeUserRepository(repository.AbstractUserRepository):
     def _get_by_username(self, username: str) -> Optional[UserAggregate]:
         return next((u for u in self._users.values() if u.user.username == username), None)
 
+    def _delete(self, user_id: int) -> None:
+        self._users.pop(user_id, None)
+
 
 class FakePostRepository(repository.AbstractPostRepository):
     def __init__(self, posts: Iterable[PostAggregate] | None = None) -> None:

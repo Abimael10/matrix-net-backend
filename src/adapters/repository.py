@@ -17,7 +17,7 @@ class SqlAlchemyUserRepository(abs_repo.AbstractUserRepository):
 
     def _add(self, user: model.UserAggregate) -> None:
         values = {
-            "id": user.user.id,
+            # id may be None => autoincrement
             "email": user.user.email,
             "username": user.user.username,
             "password": user.password_hash,
@@ -26,8 +26,10 @@ class SqlAlchemyUserRepository(abs_repo.AbstractUserRepository):
             "avatar_url": user.avatar_url,
             "confirmed": True,
         }
-        stmt = user_table.insert().values(values)
-        self.session.execute(stmt)
+        stmt = user_table.insert().values(values).returning(user_table.c.id)
+        result = self.session.execute(stmt).scalar_one()
+        # update aggregate id if needed
+        user.user = model.User(id=result, email=user.user.email, username=user.user.username)
 
     def _get(self, user_id: int) -> Optional[model.UserAggregate]:
         stmt = select(user_table).where(user_table.c.id == user_id)
@@ -50,6 +52,9 @@ class SqlAlchemyUserRepository(abs_repo.AbstractUserRepository):
             return None
         return self._row_to_agg(row)
 
+    def _delete(self, user_id: int) -> None:
+        self.session.execute(user_table.delete().where(user_table.c.id == user_id))
+
     def _row_to_agg(self, row) -> model.UserAggregate:
         user_entity = model.User(id=row["id"], email=row["email"], username=row["username"])
         return model.UserAggregate(
@@ -67,17 +72,17 @@ class SqlAlchemyPostRepository(abs_repo.AbstractPostRepository):
         self.session = session
 
     def _add(self, post: model.PostAggregate) -> None:
-        stmt = post_table.insert().values(
-            {
-                "id": post.id,
-                "user_id": post.user_id,
-                "username": post.username,
-                "body": post.body,
-                "image_url": None,
-            }
-        )
-        self.session.execute(stmt)
-        # comments/likes are managed via aggregation behaviors
+        values = {
+            "user_id": post.user_id,
+            "username": post.username,
+            "body": post.body,
+            "image_url": None,
+        }
+        if post.id is not None:
+            values["id"] = post.id
+        stmt = post_table.insert().values(values).returning(post_table.c.id)
+        new_id = self.session.execute(stmt).scalar_one()
+        post.id = new_id
 
     def _get(self, post_id: int) -> Optional[model.PostAggregate]:
         stmt = select(post_table).where(post_table.c.id == post_id)

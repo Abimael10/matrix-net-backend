@@ -1,158 +1,104 @@
 from enum import Enum
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Depends
-from src.db import comment_table, likes_table, post_table, database
+from fastapi import APIRouter, HTTPException, Depends, Request
 
-import sqlalchemy
-
+from src.domain import commands, exceptions
 from src.models.post import (
-    UserPostI, 
-    UserPost, 
-    Comment, 
-    CommentI, 
+    UserPostI,
+    CommentI,
     PostLikeI,
-    PostLike,
+    UserPostWithLikes,
     UserPostWithComments,
-    UserPostWithLikes
+    Comment,
+    PostLike,
 )
 from src.models.user import User
 from src.security import get_current_user
+from src.views import posts as post_views
+from src.views import comments as comment_views
 
 router = APIRouter()
 
-#Query to select post with its amount of likes basically
-#Will see about optimizing the way I query like this since
-#it gets closer to SQL-like without doing too much magic with these ORMs...
-select_post_and_likes = (
-    sqlalchemy.select(post_table, sqlalchemy.func.count(likes_table.c.id).label("likes"))
-    .select_from(post_table.outerjoin(likes_table))
-    .group_by(post_table.c.id)
-)
-
-async def find_post(post_id: int):
-    query = post_table.select().where(post_table.c.id == post_id)
-    return await database.fetch_one(query)
-
-#POST create a post
-@router.post("/api/posts", response_model=UserPost, status_code=201)
-async def create_post(
-    post: UserPostI, 
-    current_user: Annotated[User, Depends(get_current_user)]
-):
-
-    data = {
-        **post.model_dump(),
-        "user_id": current_user.id,
-        "username": current_user.username,
-    }
-    query = post_table.insert().values(data)
-    last_record_id = await database.execute(query)
-    # Fetch the inserted row to include server defaults like created_at
-    created = await database.fetch_one(
-        post_table.select().where(post_table.c.id == last_record_id)
-    )
-    return created
-
-#Helper enum for post sorting
 class PostSorting(str, Enum):
     new = "new"
     old = "old"
     most_likes = "most_likes"
 
-#GET all the posts
+
+def get_bus(request: Request):
+    return request.app.state.bus
+
+
+@router.post("/api/posts", status_code=201)
+async def create_post(
+    post: UserPostI,
+    current_user: Annotated[User, Depends(get_current_user)],
+    request: Request,
+):
+    bus = get_bus(request)
+    cmd = commands.CreatePost(
+        post_id=None,
+        user_id=current_user.id,
+        username=current_user.username,
+        body=post.body,
+        image_url=None,
+    )
+    try:
+        bus.handle(cmd)
+    except exceptions.Unauthorized as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    return {"detail": "Post created"}
+
+
 @router.get("/api/posts", response_model=list[UserPostWithLikes], status_code=200)
 async def get_all_posts(sorting: PostSorting = PostSorting.new):
+    return await post_views.list_posts(order=sorting.value)
 
-    if sorting == PostSorting.new:
-        query = select_post_and_likes.order_by(post_table.c.id.desc())
-    elif sorting == PostSorting.old:
-        query = select_post_and_likes.order_by(post_table.c.id.asc())
-    elif sorting == PostSorting.most_likes:
-        query = select_post_and_likes.order_by(sqlalchemy.desc("likes"))
 
-    return await database.fetch_all(query)
-
-#POST create a comment a post
 @router.post("/api/posts/comment", response_model=Comment, status_code=201)
 async def create_comment(
-    comment: CommentI, 
-    current_user: Annotated[User, Depends(get_current_user)]
+    comment: CommentI,
+    current_user: Annotated[User, Depends(get_current_user)],
+    request: Request,
 ):
-
-    post = await find_post(comment.post_id)
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-
-    data = {
-        **comment.model_dump(),
-        "user_id": current_user.id,
-        "username": current_user.username,
-    }
-    query = comment_table.insert().values(data)
-    last_record_id = await database.execute(query)
-
-    # Fetch inserted record to include server defaults like created_at
-    created = await database.fetch_one(
-        comment_table.select().where(comment_table.c.id == last_record_id)
+    bus = get_bus(request)
+    cmd = commands.AddComment(
+        post_id=comment.post_id,
+        comment_id=0,
+        user_id=current_user.id,
+        body=comment.body,
     )
-    return created
+    try:
+        bus.handle(cmd)
+    except exceptions.PostNotFound:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return {"detail": "Comment created"}
 
-#GET a single post comments
+
 @router.get("/api/posts/{post_id}/comment", response_model=list[Comment], status_code=200)
 async def get_comments_on_post(post_id: int):
-    query = comment_table.select().where(comment_table.c.post_id == post_id)
-    return await database.fetch_all(query)
+    return await comment_views.list_comments_for_post(post_id)
 
-#GET a single post and all its comments
+
 @router.get("/api/posts/{post_id}", response_model=UserPostWithComments, status_code=200)
 async def get_post_with_comments(post_id: int):
-
-    query = select_post_and_likes.where(post_table.c.id == post_id)
-
-    post = await database.fetch_one(query)
-
-    if not post:
+    result = await post_views.get_post_with_comments(post_id)
+    if not result:
         raise HTTPException(status_code=404, detail="Post not found")
-    
-    return {
-        "post": post, 
-        "comments": await get_comments_on_post(post_id),
-    }
+    return result
 
-@router.post("/api/like", response_model=PostLike, status_code=201)
+
+@router.post("/api/like", response_model=dict, status_code=201)
 async def like_post(
-    like: PostLikeI, 
-    current_user: Annotated[User, Depends(get_current_user)]
+    like: PostLikeI,
+    current_user: Annotated[User, Depends(get_current_user)],
+    request: Request,
 ):
-    
-    post = await find_post(like.post_id)
-    if not post:
+    bus = get_bus(request)
+    cmd = commands.ToggleLike(post_id=like.post_id, user_id=current_user.id)
+    try:
+        [liked] = bus.handle(cmd)
+    except exceptions.PostNotFound:
         raise HTTPException(status_code=404, detail="Post not found")
-    
-    # Toggle like: if like exists for this user/post, remove it (unlike),
-    # otherwise create it (like). Always return a PostLike shape.
-    existing_like_query = (
-        likes_table.select()
-        .where(
-            (likes_table.c.post_id == like.post_id)
-            & (likes_table.c.user_id == current_user.id)
-        )
-    )
-    existing_like = await database.fetch_one(existing_like_query)
-
-    if existing_like:
-        # Unlike: delete and return the removed like info
-        delete_query = likes_table.delete().where(likes_table.c.id == existing_like.id)
-        await database.execute(delete_query)
-        return {
-            "id": existing_like.id,
-            "post_id": existing_like.post_id,
-            "user_id": existing_like.user_id,
-        }
-
-    # Like: create new like
-    data = {**like.model_dump(), "user_id": current_user.id}
-    insert_query = likes_table.insert().values(data)
-    last_record_id = await database.execute(insert_query)
-    return {**data, "id": last_record_id}
+    return {"liked": liked}
