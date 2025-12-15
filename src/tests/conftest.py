@@ -16,8 +16,15 @@ def anyio_backend():
 def client() -> Generator:
    yield TestClient(app)
 
-@pytest.fixture(autouse=True)
-async def db() -> AsyncGenerator:
+@pytest.fixture()
+async def db(request) -> AsyncGenerator:
+    """
+    DB fixture for integration/API tests. Opt-in via @pytest.mark.usefixtures("db")
+    or module-level pytestmark. Skipped for pure unit tests.
+    """
+    if request.node.get_closest_marker("no_db"):
+        yield
+        return
     await database.connect()
     # Ensure a clean database state before each test
     # Delete in child-to-parent order to satisfy foreign key constraints

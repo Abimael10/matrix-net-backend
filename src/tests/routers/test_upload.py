@@ -6,6 +6,8 @@ import tempfile
 import pytest
 from httpx import AsyncClient
 
+pytestmark = pytest.mark.usefixtures("db")
+
 @pytest.fixture()
 def sample_image(fs) -> pathlib.Path:
     path = (pathlib.Path(__file__).parent / "assets" / "myfile.png").resolve()

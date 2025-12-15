@@ -3,6 +3,9 @@ from jose import jwt
 
 from src import security
 
+# Use DB fixture where async DB calls are exercised
+pytestmark = pytest.mark.usefixtures("db")
+
 def test_access_token_expire_minutes():
     assert security.access_token_expire_minutes() == 30
 

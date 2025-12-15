@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
 
+pytestmark = pytest.mark.usefixtures("db")
+
 async def register_user(
     async_client: AsyncClient, 
     email: str, 
