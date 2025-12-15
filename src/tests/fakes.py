@@ -11,11 +11,22 @@ class FakeUserRepository(repository.AbstractUserRepository):
     def __init__(self, users: Iterable[UserAggregate] | None = None) -> None:
         super().__init__()
         self._users: Dict[int, UserAggregate] = {}
+        self._next_id = 1
         if users:
             for u in users:
                 self._users[u.user.id] = u
+                self._next_id = max(self._next_id, u.user.id + 1)
 
     def _add(self, user: UserAggregate) -> None:
+        if user.user.id is None or user.user.id == 0:
+            user = UserAggregate(
+                user=User(id=self._next_id, email=user.user.email, username=user.user.username),
+                bio=user.bio,
+                location=user.location,
+                avatar_url=user.avatar_url,
+                password_hash=user.password_hash,
+            )
+            self._next_id += 1
         self._users[user.user.id] = user
 
     def _get(self, user_id: int) -> Optional[UserAggregate]:
@@ -36,12 +47,17 @@ class FakePostRepository(repository.AbstractPostRepository):
         super().__init__()
         self._posts: Dict[int, PostAggregate] = {}
         self._posts_by_user: Dict[int, Set[int]] = defaultdict(set)
+        self._next_id = 1
         if posts:
             for p in posts:
                 self._posts[p.id] = p
                 self._posts_by_user[p.user_id].add(p.id)
+                self._next_id = max(self._next_id, (p.id or 0) + 1)
 
     def _add(self, post: PostAggregate) -> None:
+        if post.id is None or post.id == 0:
+            post.id = self._next_id
+            self._next_id += 1
         self._posts[post.id] = post
         self._posts_by_user[post.user_id].add(post.id)
 

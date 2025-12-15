@@ -12,7 +12,7 @@ from typing import Optional, Set
 
 @dataclass(eq=True, frozen=True)
 class User:
-    id: int
+    id: int | None
     email: str
     username: str
 
