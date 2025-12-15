@@ -3,6 +3,7 @@ import os
 import databases
 import sqlalchemy
 from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
 from src.config import config
 
@@ -88,6 +89,7 @@ connect_args = (
     else {}
 )
 engine = sqlalchemy.create_engine(config.DATABASE_URI, connect_args=connect_args)
+SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 metadata.create_all(engine)
 database = databases.Database(
