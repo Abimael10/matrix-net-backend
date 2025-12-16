@@ -5,7 +5,7 @@ import sqlalchemy
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from src.db import database
+from src.db import database, user_table
 from src.models.user import UserI, UserLogin, UserProfileUpdate, UserRegister
 from src.models.user_settings import ChangePasswordRequest, DeleteAccountRequest
 from src import security
