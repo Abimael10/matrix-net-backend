@@ -45,10 +45,11 @@ async def test_register_user_already_exists(
 async def test_login_user_not_exists(async_client: AsyncClient):
     response = await async_client.post(
         "/api/token",
-        json={
-            "email": "email@email.com",
+        data={
+            "username": "email@email.com",
             "password": "1234tired."
-        }
+        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
 
     assert response.status_code == 401
@@ -60,10 +61,11 @@ async def test_login_registered_user(
 ):
     response = await async_client.post(
         "/api/token",
-        json={
-            "email": registered_user["email"],
+        data={
+            "username": registered_user["email"],
             "password": registered_user["password"]
-        }
+        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
 
     assert response.status_code == 200  # Now succeeds because users are auto-confirmed
@@ -72,10 +74,11 @@ async def test_login_registered_user(
 async def test_login_confirmed_user(async_client: AsyncClient, confirmed_user: dict):
     response = await async_client.post(
         "/api/token",
-        json={
-            "email": confirmed_user["email"],
+        data={
+            "username": confirmed_user["email"],
             "password": confirmed_user["password"]
-        }
+        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
 
     assert response.status_code == 200

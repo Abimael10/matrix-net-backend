@@ -6,6 +6,12 @@ import tempfile
 import pytest
 from httpx import AsyncClient
 
+from src import bootstrap
+from src.adapters.notifications import LogNotifier
+from src.adapters.storage import FakeFileStorage
+from src.service_layer.unit_of_work import FakeUnitOfWork
+from src.tests.fakes import FakePostRepository, FakeUserRepository
+
 pytestmark = pytest.mark.usefixtures("db")
 
 @pytest.fixture()
@@ -15,10 +21,15 @@ def sample_image(fs) -> pathlib.Path:
     return path
 
 @pytest.fixture(autouse=True)
-def mock_b2_upload_file(mocker):
-    return mocker.patch(
-        "src.routers.upload.b2_upload_file", return_value="https://fakeurl.com"
+def override_message_bus(monkeypatch):
+    fake_bus = bootstrap.bootstrap(
+        uow=FakeUnitOfWork(FakeUserRepository(), FakePostRepository()),
+        notifier=LogNotifier(),
+        file_storage=FakeFileStorage(),
     )
+    monkeypatch.setattr(bootstrap, "_global_bus", fake_bus)
+    yield
+    monkeypatch.setattr(bootstrap, "_global_bus", None)
 
 @pytest.fixture(autouse=True)
 def aiofiles_mock_open(mocker, fs):
@@ -51,7 +62,7 @@ async def test_upload_image(
 ):
     response = await call_upload_endpoint(async_client, logged_in_token, sample_image)
     assert response.status_code == 201
-    assert response.json()["file_url"] == "https://fakeurl.com"
+    assert response.json()["file_url"].endswith("myfile.png")
 
 @pytest.mark.anyio
 async def test_temp_file_removed_after_upload(

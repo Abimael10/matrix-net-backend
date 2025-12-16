@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Dict, Iterable, Optional, Set
 
-from src.domain.model import PostAggregate, User, UserAggregate, Like
+from src.domain.model import Comment, Like, PostAggregate, User, UserAggregate
 from src.service_layer import repository
 
 

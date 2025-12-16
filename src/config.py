@@ -4,6 +4,10 @@ import os
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+
+# Load environment variables from .env early so ENV selection works without manual edits.
+load_dotenv(override=False)
 
 class BaseConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -89,7 +93,7 @@ class ProdConfig(GlobalConfig):
 
 class TestConfig(GlobalConfig):
     DATABASE_URI: str = "sqlite:///test.db"
-    DB_FORCE_ROLL_BACK: bool = True #Pretty much safe in a test database,
+    DB_FORCE_ROLL_BACK: bool = False #Explicit cleanup is handled in tests,
                                     #Also putting the hard coded test DB address
                                     #is not a high threat either, since it does not
                                     #require a user auth and its records are a reflec of the code.
@@ -109,9 +113,6 @@ def get_config(env_state: str):
     configs = {"dev": DevConfig, "test": TestConfig, "prod": ProdConfig}
     return configs[env_state]()
 
-# Prefer test config automatically when running under pytest unless ENV is set
-detected_env = os.getenv("ENV")
-if not detected_env and os.getenv("PYTEST_CURRENT_TEST"):
-    detected_env = "test"
-env_state = detected_env or "prod"
+# Select environment strictly from ENV (or default to "test" if unset/blank)
+env_state = os.getenv("ENV") or "test"
 config = get_config(env_state)

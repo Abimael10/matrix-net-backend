@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Annotated
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 
@@ -17,6 +18,7 @@ from src.entrypoints.schemas.user import User
 from src.security import get_current_user
 from src.views import posts as post_views
 from src.views import comments as comment_views
+from src.db import database
 
 router = APIRouter()
 
@@ -31,7 +33,7 @@ def get_bus(request: Request):
     return get_message_bus()
 
 
-@router.post("/api/posts", status_code=201)
+@router.post("/api/posts", response_model=UserPostWithLikes, status_code=201)
 async def create_post(
     post: UserPostI,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -46,10 +48,26 @@ async def create_post(
         image_url=None,
     )
     try:
-        bus.handle(cmd)
+        [post_id] = bus.handle(cmd)
     except exceptions.Unauthorized as e:
         raise HTTPException(status_code=401, detail=str(e))
-    return {"detail": "Post created"}
+
+    # Prefer the persisted record (ensures timestamps match list/detail endpoints)
+    if database.is_connected:
+        created = await post_views.get_post(post_id)
+        if created:
+            return created
+
+    # Fallback for non-persisted fake repositories
+    return {
+        "id": post_id,
+        "user_id": current_user.id,
+        "username": getattr(current_user, "username", ""),
+        "body": post.body,
+        "image_url": None,
+        "likes": 0,
+        "created_at": datetime.now(timezone.utc).replace(microsecond=0),
+    }
 
 
 @router.get("/api/posts", response_model=list[UserPostWithLikes], status_code=200)

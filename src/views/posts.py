@@ -5,6 +5,19 @@ from sqlalchemy import func
 from src.db import comment_table, likes_table, post_table, database
 
 
+async def get_post(post_id: int):
+    query = (
+        sqlalchemy.select(
+            post_table,
+            func.count(likes_table.c.id).label("likes"),
+        )
+        .select_from(post_table.outerjoin(likes_table))
+        .where(post_table.c.id == post_id)
+        .group_by(post_table.c.id)
+    )
+    return await database.fetch_one(query)
+
+
 async def list_posts(order: str = "new"):
     base = (
         sqlalchemy.select(

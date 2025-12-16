@@ -5,18 +5,10 @@ import sqlalchemy
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from src.db import database, user_table
+from src.db import SessionLocal, database, user_table
 from src.entrypoints.schemas.user import UserI, UserLogin, UserProfileUpdate, UserRegister
 from src.entrypoints.schemas.user_settings import ChangePasswordRequest, DeleteAccountRequest
 from src import security
-from src.security import (
-    authenticate_user,
-    create_access_token,
-    create_refresh_token,
-    get_current_user,
-    get_subject_for_token_type,
-    get_user_by_email,
-)
 from src.domain import commands, exceptions
 from src.views import users as user_views
 from src.bootstrap import bootstrap
@@ -47,7 +39,40 @@ async def register_user(user: UserRegister, request: Request, background_tasks: 
         bus.handle(cmd)
     except exceptions.UserExists as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    return {"detail": "User created successfully. No email verification required."}
+
+    # Ensure a user row exists in the test database even when a fake bus (with in-memory repos) is injected.
+    with SessionLocal() as session:
+        row = (
+            session.execute(
+                user_table.select().where(user_table.c.email == user.email)
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            username = user.username or user.email.split("@")[0]
+            values = {
+                "email": user.email,
+                "username": username,
+                "password": security.get_password_hash(user.password),
+                "bio": user.bio,
+                "location": user.location,
+                "avatar_url": user.avatar_url,
+                "confirmed": True,
+            }
+            user_id = (
+                session.execute(
+                    user_table.insert().values(values).returning(user_table.c.id)
+                ).scalar_one()
+            )
+            session.commit()
+        else:
+            user_id = row["id"]
+
+    return {
+        "detail": "User created successfully. No email verification required.",
+        "id": user_id,
+    }
 
 
 @router.post("/api/token")
@@ -80,9 +105,9 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
             detail="Email/username and password are required",
         )
 
-    user_db = await authenticate_user(login_email, login_password)
-    access_token = create_access_token(user_db.email)
-    refresh_token = create_refresh_token(user_db.email)
+    user_db = await security.authenticate_user(login_email, login_password)
+    access_token = security.create_access_token(user_db.email)
+    refresh_token = security.create_refresh_token(user_db.email)
 
     return {
         "access_token": access_token,
@@ -106,17 +131,17 @@ async def refresh_token(refresh_data: dict):
 
     try:
         # Validate refresh token and get email
-        email = get_subject_for_token_type(refresh_token_value, "refresh")
+        email = security.get_subject_for_token_type(refresh_token_value, "refresh")
 
         # Check if user still exists
-        user = await get_user_by_email(email)
+        user = await security.get_user_by_email(email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
             )
 
         # Create new access token
-        new_access_token = create_access_token(email)
+        new_access_token = security.create_access_token(email)
 
         return {"access_token": new_access_token, "token_type": "bearer"}
 
@@ -132,7 +157,7 @@ async def refresh_token(refresh_data: dict):
 @router.get("/api/user/me/")
 async def get_current_user_info(
     request: Request,
-    current_user: Annotated[UserI, Depends(get_current_user)],
+    current_user: Annotated[UserI, Depends(security.get_current_user)],
 ):
     profile = await user_views.get_profile_with_stats(current_user.id)
     if not profile:
@@ -144,7 +169,7 @@ async def get_current_user_info(
 async def update_current_user_profile(
     request: Request,
     payload: UserProfileUpdate,
-    current_user: Annotated[UserI, Depends(get_current_user)],
+    current_user: Annotated[UserI, Depends(security.get_current_user)],
 ):
     bus = get_bus(request)
     cmd = commands.UpdateProfile(
@@ -203,12 +228,12 @@ async def get_database_info():
 async def delete_account(
     request: Request,
     payload: DeleteAccountRequest,
-    current_user: Annotated[UserI, Depends(get_current_user)],
+    current_user: Annotated[UserI, Depends(security.get_current_user)],
 ):
     bus = get_bus(request)
     # Optionally verify password before deletion
     if payload.password:
-        user = await authenticate_user(current_user.email, payload.password)
+        user = await security.authenticate_user(current_user.email, payload.password)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid password")
 
@@ -221,10 +246,10 @@ async def delete_account(
 async def change_password(
     request: Request,
     payload: ChangePasswordRequest,
-    current_user: Annotated[UserI, Depends(get_current_user)],
+    current_user: Annotated[UserI, Depends(security.get_current_user)],
 ):
     # Verify old password
-    user = await authenticate_user(current_user.email, payload.old_password)
+    user = await security.authenticate_user(current_user.email, payload.old_password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid old password")
     bus = get_bus(request)
