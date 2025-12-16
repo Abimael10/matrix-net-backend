@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Dict, Iterable, Optional, Set
 
-from src.domain.model import PostAggregate, User, UserAggregate
+from src.domain.model import PostAggregate, User, UserAggregate, Like
 from src.service_layer import repository
 
 
@@ -100,3 +100,17 @@ class FakePostRepository(repository.AbstractPostRepository):
         posts = list(self._posts.values())
         # Sorting placeholder: implement by sort key if needed (e.g., created_at)
         return posts
+
+    def _add_like(self, post_id: int, user_id: int) -> None:
+        post = self._posts.get(post_id)
+        if not post:
+            return
+        post.likes.add(Like(post_id=post_id, user_id=user_id))
+
+    def _remove_like(self, post_id: int, user_id: int) -> None:
+        post = self._posts.get(post_id)
+        if not post:
+            return
+        target = Like(post_id=post_id, user_id=user_id)
+        if target in post.likes:
+            post.likes.remove(target)
