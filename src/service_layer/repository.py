@@ -69,6 +69,12 @@ class AbstractPostRepository(abc.ABC):
         self._save(post)
         self.seen.add(post)
 
+    def add_like(self, post_id: int, user_id: int) -> None:
+        self._add_like(post_id, user_id)
+
+    def remove_like(self, post_id: int, user_id: int) -> None:
+        self._remove_like(post_id, user_id)
+
     def get(self, post_id: int) -> Optional[PostAggregate]:
         post = self._get(post_id)
         if post:
@@ -99,3 +105,9 @@ class AbstractPostRepository(abc.ABC):
 
     @abc.abstractmethod
     def _list_all(self, sort: Optional[str] = None) -> Iterable[PostAggregate]: ...
+
+    @abc.abstractmethod
+    def _add_like(self, post_id: int, user_id: int) -> None: ...
+
+    @abc.abstractmethod
+    def _remove_like(self, post_id: int, user_id: int) -> None: ...
