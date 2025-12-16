@@ -3,6 +3,7 @@ from typing import Annotated
 
 import sqlalchemy
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordRequestForm
 
 from src.db import database
 from src.models.user import UserI, UserLogin, UserProfileUpdate, UserRegister
@@ -50,10 +51,38 @@ async def register_user(user: UserRegister, request: Request, background_tasks: 
 
 
 @router.post("/api/token")
-async def login(user: UserLogin):
-    user = await authenticate_user(user.email, user.password)
-    access_token = create_access_token(user.email)
-    refresh_token = create_refresh_token(user.email)
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Token issuer for both JSON clients and OAuth2 password flow (form-encoded).
+    - JSON: {"email": "...", "password": "..."}
+    - Form: username/password (Swagger OAuth2 password flow)
+    """
+    login_email = None
+    login_password = None
+
+    # Prefer JSON if sent
+    if request.headers.get("content-type", "").startswith("application/json"):
+        try:
+            payload = await request.json()
+            login_email = payload.get("email") or payload.get("username")
+            login_password = payload.get("password")
+        except Exception:
+            login_email = login_password = None
+
+    # Fallback to form (Swagger)
+    if not login_email or not login_password:
+        login_email = form_data.username
+        login_password = form_data.password
+
+    if not login_email or not login_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email/username and password are required",
+        )
+
+    user_db = await authenticate_user(login_email, login_password)
+    access_token = create_access_token(user_db.email)
+    refresh_token = create_refresh_token(user_db.email)
 
     return {
         "access_token": access_token,

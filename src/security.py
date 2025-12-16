@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 KEY = config.SECRET_KEY
 ALGORITHM = "HS256"
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+# OAuth2 password flow for Swagger/OpenAPI; token issued at /api/token
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
 pwd_context = CryptContext(schemes=["bcrypt"])
 
