@@ -62,12 +62,17 @@ def add_comment(cmd: commands.AddComment, uow: unit_of_work.AbstractUnitOfWork) 
     post = uow.posts.get(cmd.post_id)
     if not post:
         raise exceptions.PostNotFound(f"Post {cmd.post_id} not found")
-    comment = post.add_comment(comment_id=cmd.comment_id, user_id=cmd.user_id, body=cmd.body)
+    # Let the repository assign IDs; use a placeholder (None) in the aggregate
+    comment = post.add_comment(comment_id=None, user_id=cmd.user_id, body=cmd.body)
+    # Persist post/comment to get DB-generated ID
+    uow.posts.save(post)
+    # Collect the actual ID after save if available
+    new_id = getattr(uow.posts, "last_comment_id", None) or getattr(comment, "id", None) or cmd.comment_id
     _ensure_events_list(post).append(
-        events.CommentAdded(post_id=cmd.post_id, comment_id=cmd.comment_id, user_id=cmd.user_id)
+        events.CommentAdded(post_id=cmd.post_id, comment_id=new_id, user_id=cmd.user_id)
     )
     uow.commit()
-    return comment.id
+    return new_id
 
 
 def toggle_like(cmd: commands.ToggleLike, uow: unit_of_work.AbstractUnitOfWork):
