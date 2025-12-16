@@ -81,7 +81,10 @@ def toggle_like(cmd: commands.ToggleLike, uow: unit_of_work.AbstractUnitOfWork):
         raise exceptions.PostNotFound(f"Post {cmd.post_id} not found")
     result = post.toggle_like(user_id=cmd.user_id)
     liked = result is not None
-    uow.posts.save(post)
+    if liked:
+        uow.posts.add_like(cmd.post_id, cmd.user_id)
+    else:
+        uow.posts.remove_like(cmd.post_id, cmd.user_id)
     _ensure_events_list(post).append(events.LikeToggled(post_id=cmd.post_id, user_id=cmd.user_id, liked=liked))
     uow.commit()
     return liked
