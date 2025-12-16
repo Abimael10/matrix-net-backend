@@ -125,8 +125,19 @@ class SqlAlchemyPostRepository(abs_repo.AbstractPostRepository):
                         body=comment.body,
                     )
                 )
-        # No-op for likes here; handled via toggle_like
+        # Likes are handled via explicit add/remove methods
 
+    def _add_like(self, post_id: int, user_id: int) -> None:
+        self.session.execute(
+            likes_table.insert().values(post_id=post_id, user_id=user_id)
+        )
+
+    def _remove_like(self, post_id: int, user_id: int) -> None:
+        self.session.execute(
+            likes_table.delete().where(
+                likes_table.c.post_id == post_id, likes_table.c.user_id == user_id
+            )
+        )
     def _get(self, post_id: int) -> Optional[model.PostAggregate]:
         stmt = select(post_table).where(post_table.c.id == post_id)
         row = self.session.execute(stmt).mappings().first()
