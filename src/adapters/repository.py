@@ -83,6 +83,7 @@ class SqlAlchemyPostRepository(abs_repo.AbstractPostRepository):
     def __init__(self, session: Session) -> None:
         super().__init__()
         self.session = session
+        self._last_comment_id = None
 
     def _add(self, post: model.PostAggregate) -> None:
         values = {
@@ -96,6 +97,35 @@ class SqlAlchemyPostRepository(abs_repo.AbstractPostRepository):
         stmt = post_table.insert().values(values).returning(post_table.c.id)
         new_id = self.session.execute(stmt).scalar_one()
         post.id = new_id
+
+    def _save(self, post: model.PostAggregate) -> None:
+        # Persist new comments/likes embedded in the aggregate
+        if post.id is None:
+            self._add(post)
+            return
+        # Save new comments
+        for comment in list(post.comments):
+            # comment.id None or 0 => new
+            if getattr(comment, "id", None) in (None, 0):
+                stmt = comment_table.insert().values(
+                    post_id=post.id,
+                    user_id=comment.user_id,
+                    body=comment.body,
+                    username=None,
+                ).returning(comment_table.c.id)
+                new_id = self.session.execute(stmt).scalar_one()
+                self.last_comment_id = new_id
+                # replace with a new Comment carrying the db id
+                post.comments.remove(comment)
+                post.comments.add(
+                    model.Comment(
+                        id=new_id,
+                        post_id=post.id,
+                        user_id=comment.user_id,
+                        body=comment.body,
+                    )
+                )
+        # No-op for likes here; handled via toggle_like
 
     def _get(self, post_id: int) -> Optional[model.PostAggregate]:
         stmt = select(post_table).where(post_table.c.id == post_id)
