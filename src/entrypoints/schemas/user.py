@@ -1,8 +1,9 @@
 from typing import Optional, ClassVar
 from datetime import datetime, timezone
+import re
 
 from pydantic import BaseModel, EmailStr, field_validator
-import re
+
 
 class User(BaseModel):
     id: int | None = None
@@ -24,8 +25,10 @@ class User(BaseModel):
             return dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
 
+
 class UserI(User):
-    password : str
+    password: str
+
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -34,6 +37,7 @@ class UserRegister(BaseModel):
     bio: Optional[str] = None
     location: Optional[str] = None
     avatar_url: Optional[str] = None
+
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -53,11 +57,8 @@ class UserProfileUpdate(BaseModel):
         if value is None:
             return None
         text = value.strip()
-        # Remove HTML tags
         text = re.sub(r"<[^>]+>", "", text)
-        # Normalize internal whitespace
         text = re.sub(r"\s+", " ", text)
-        # Remove non-printable control characters (preserve tabs/newlines already normalized)
         text = "".join(ch for ch in text if ch.isprintable())
         if not text:
             return None

@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
 
 from src.domain import commands, exceptions
-from src.models.post import (
+from src.entrypoints.schemas.post import (
     UserPostI,
     CommentI,
     PostLikeI,
@@ -13,7 +13,7 @@ from src.models.post import (
     Comment,
     PostLike,
 )
-from src.models.user import User
+from src.entrypoints.schemas.user import User
 from src.security import get_current_user
 from src.views import posts as post_views
 from src.views import comments as comment_views

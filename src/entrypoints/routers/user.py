@@ -6,8 +6,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from fastapi.security import OAuth2PasswordRequestForm
 
 from src.db import database, user_table
-from src.models.user import UserI, UserLogin, UserProfileUpdate, UserRegister
-from src.models.user_settings import ChangePasswordRequest, DeleteAccountRequest
+from src.entrypoints.schemas.user import UserI, UserLogin, UserProfileUpdate, UserRegister
+from src.entrypoints.schemas.user_settings import ChangePasswordRequest, DeleteAccountRequest
 from src import security
 from src.security import (
     authenticate_user,
