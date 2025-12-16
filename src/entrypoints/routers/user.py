@@ -3,7 +3,6 @@ from typing import Annotated
 
 import sqlalchemy
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordRequestForm
 
 from src.db import SessionLocal, database, user_table
 from src.entrypoints.schemas.user import UserI, UserLogin, UserProfileUpdate, UserRegister
@@ -76,17 +75,20 @@ async def register_user(user: UserRegister, request: Request, background_tasks: 
 
 
 @router.post("/api/token")
-async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(request: Request):
     """
-    Token issuer for both JSON clients and OAuth2 password flow (form-encoded).
-    - JSON: {"email": "...", "password": "..."}
-    - Form: username/password (Swagger OAuth2 password flow)
+    Token issuer for both JSON clients and form-encoded OAuth2 password flow.
+    Accepts:
+    - JSON: {"email" or "username", "password"}
+    - Form: username/password
     """
     login_email = None
     login_password = None
 
+    content_type = request.headers.get("content-type", "")
+
     # Prefer JSON if sent
-    if request.headers.get("content-type", "").startswith("application/json"):
+    if content_type.startswith("application/json"):
         try:
             payload = await request.json()
             login_email = payload.get("email") or payload.get("username")
@@ -94,10 +96,14 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         except Exception:
             login_email = login_password = None
 
-    # Fallback to form (Swagger)
+    # Fallback to form (OAuth2 password flow)
     if not login_email or not login_password:
-        login_email = form_data.username
-        login_password = form_data.password
+        try:
+            form = await request.form()
+            login_email = login_email or form.get("username")
+            login_password = login_password or form.get("password")
+        except Exception:
+            login_email = login_password = None
 
     if not login_email or not login_password:
         raise HTTPException(
