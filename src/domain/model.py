@@ -72,12 +72,12 @@ class PostAggregate:
     comments: Set[Comment] = field(default_factory=set, compare=False, hash=False)
     likes: Set[Like] = field(default_factory=set, compare=False, hash=False)
 
-    def add_comment(self, comment_id: int, user_id: int, body: str) -> Comment:
+    def add_comment(self, comment_id: Optional[int], user_id: int, body: str) -> Comment:
         if not body:
             from src.domain import exceptions
 
             raise exceptions.InvalidOperation("Comment body cannot be empty")
-        comment = Comment(id=comment_id, post_id=self.id, user_id=user_id, body=body)
+        comment = Comment(id=comment_id, post_id=self.id, user_id=user_id, body=body)  # type: ignore[arg-type]
         self.comments.add(comment)
         return comment
 
