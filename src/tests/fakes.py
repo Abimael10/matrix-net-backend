@@ -41,6 +41,12 @@ class FakeUserRepository(repository.AbstractUserRepository):
     def _delete(self, user_id: int) -> None:
         self._users.pop(user_id, None)
 
+    def _save(self, user: UserAggregate) -> None:
+        # Overwrite existing aggregate with updated fields
+        if user.user.id is None:
+            return
+        self._users[user.user.id] = user
+
 
 class FakePostRepository(repository.AbstractPostRepository):
     def __init__(self, posts: Iterable[PostAggregate] | None = None) -> None:

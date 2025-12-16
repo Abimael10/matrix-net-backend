@@ -14,6 +14,11 @@ class AbstractUserRepository(abc.ABC):
         self._add(user)
         self.seen.add(user)
 
+    def save(self, user: UserAggregate) -> None:
+        """Persist mutations on an existing aggregate."""
+        self._save(user)
+        self.seen.add(user)
+
     def get(self, user_id: int) -> Optional[UserAggregate]:
         user = self._get(user_id)
         if user:
@@ -46,6 +51,9 @@ class AbstractUserRepository(abc.ABC):
     
     @abc.abstractmethod
     def _delete(self, user_id: int) -> None: ...
+
+    @abc.abstractmethod
+    def _save(self, user: UserAggregate) -> None: ...
 
 
 class AbstractPostRepository(abc.ABC):

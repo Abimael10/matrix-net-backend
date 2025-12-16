@@ -55,6 +55,19 @@ class SqlAlchemyUserRepository(abs_repo.AbstractUserRepository):
     def _delete(self, user_id: int) -> None:
         self.session.execute(user_table.delete().where(user_table.c.id == user_id))
 
+    def _save(self, user: model.UserAggregate) -> None:
+        """Persist in-memory changes to the users table."""
+        self.session.execute(
+            user_table.update()
+            .where(user_table.c.id == user.user.id)
+            .values(
+                bio=user.bio,
+                location=user.location,
+                avatar_url=user.avatar_url,
+                password=user.password_hash,
+            )
+        )
+
     def _row_to_agg(self, row) -> model.UserAggregate:
         user_entity = model.User(id=row["id"], email=row["email"], username=row["username"])
         return model.UserAggregate(

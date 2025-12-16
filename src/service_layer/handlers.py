@@ -96,6 +96,7 @@ def update_profile(cmd: commands.UpdateProfile, uow: unit_of_work.AbstractUnitOf
     if not user:
         raise exceptions.Unauthorized("User not found")
     user.update_profile(bio=cmd.bio, location=cmd.location, avatar_url=cmd.avatar_url)
+    uow.users.save(user)
     uow.commit()
     return user.user.id
 
@@ -105,6 +106,7 @@ def change_password(cmd: commands.ChangePassword, uow: unit_of_work.AbstractUnit
     if not user:
         raise exceptions.Unauthorized("User not found")
     user.change_password(cmd.new_password_hash)
+    uow.users.save(user)
     _ensure_events_list(user).append(events.PasswordChanged(user_id=cmd.user_id))
     uow.commit()
     return user.user.id
