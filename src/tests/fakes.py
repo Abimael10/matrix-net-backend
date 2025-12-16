@@ -70,6 +70,28 @@ class FakePostRepository(repository.AbstractPostRepository):
     def _get(self, post_id: int) -> Optional[PostAggregate]:
         return self._posts.get(post_id)
 
+    def _save(self, post: PostAggregate) -> None:
+        # For tests, assume comments already on aggregate are persisted
+        if post.id is None:
+            self._add(post)
+        self._posts[post.id] = post
+        self._posts_by_user[post.user_id].add(post.id)
+        # assign ids to new comments if missing
+        for comment in list(post.comments):
+            if getattr(comment, "id", None) in (None, 0):
+                new_id = self._next_id
+                self._next_id += 1
+                self.last_comment_id = new_id
+                post.comments.remove(comment)
+                post.comments.add(
+                    Comment(
+                        id=new_id,
+                        post_id=post.id,
+                        user_id=comment.user_id,
+                        body=comment.body,
+                    )
+                )
+
     def _list_by_user(self, user_id: int) -> Iterable[PostAggregate]:
         ids = self._posts_by_user.get(user_id, set())
         return [self._posts[i] for i in ids]
