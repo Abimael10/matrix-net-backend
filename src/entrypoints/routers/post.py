@@ -64,17 +64,25 @@ async def create_comment(
     request: Request,
 ):
     bus = get_bus(request)
+    # Generate a comment id by asking the DB for the next value (simplified here)
+    # For SQLite/postgres autoincrement, we insert via repo and fetch the new row.
+    # The handler currently relies on the aggregate to assign; ensure return has id.
     cmd = commands.AddComment(
         post_id=comment.post_id,
-        comment_id=0,
+        comment_id=0,  # repository will autoincrement
         user_id=current_user.id,
         body=comment.body,
     )
     try:
-        bus.handle(cmd)
+        [created_comment_id] = bus.handle(cmd)
     except exceptions.PostNotFound:
         raise HTTPException(status_code=404, detail="Post not found")
-    return {"detail": "Comment created"}
+    # Fetch and return the created comment
+    created = await comment_views.get_comment(comment_id=created_comment_id)
+    if not created:
+        # Fallback if not retrievable
+        return {"id": created_comment_id, "post_id": comment.post_id, "user_id": current_user.id, "body": comment.body, "created_at": None}
+    return created
 
 
 @router.get("/api/posts/{post_id}/comment", response_model=list[Comment], status_code=200)
