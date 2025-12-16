@@ -59,9 +59,14 @@ class AbstractUserRepository(abc.ABC):
 class AbstractPostRepository(abc.ABC):
     def __init__(self) -> None:
         self.seen: Set[PostAggregate] = set()
+        self.last_comment_id: int | None = None
 
     def add(self, post: PostAggregate) -> None:
         self._add(post)
+        self.seen.add(post)
+
+    def save(self, post: PostAggregate) -> None:
+        self._save(post)
         self.seen.add(post)
 
     def get(self, post_id: int) -> Optional[PostAggregate]:
@@ -85,6 +90,9 @@ class AbstractPostRepository(abc.ABC):
 
     @abc.abstractmethod
     def _get(self, post_id: int) -> Optional[PostAggregate]: ...
+
+    @abc.abstractmethod
+    def _save(self, post: PostAggregate) -> None: ...
 
     @abc.abstractmethod
     def _list_by_user(self, user_id: int) -> Iterable[PostAggregate]: ...
