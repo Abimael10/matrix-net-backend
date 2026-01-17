@@ -95,7 +95,10 @@ class FakeUnitOfWork(AbstractUnitOfWork):
     ) -> None:
         self.users = users_repo
         self.posts = posts_repo
-        self.comments = comments_repo or repository.AbstractCommentRepository()
+
+        # Import here to avoid circular dependencies
+        from src.tests.fakes import FakeCommentRepository
+        self.comments = comments_repo or FakeCommentRepository()
         self.committed = False
 
     def __enter__(self) -> "FakeUnitOfWork":
