@@ -39,7 +39,7 @@ app = FastAPI(lifespan=lifespan)
 #Only use these middleware in dev, for PROD remember to change to the client domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://matrix-net.site", "https://matrix-frontend-lkr9.onrender.com", "http://matrix-net.site", "http://matrix-frontend-lkr9.onrender.com", "https://www.matrix-net.site"],
+    allow_origins=["https://matrix-net.site", "https://matrix-frontend-lkr9.onrender.com", "http://matrix-net.site", "http://matrix-frontend-lkr9.onrender.com", "https://www.matrix-net.site", "http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["HEAD", "GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],

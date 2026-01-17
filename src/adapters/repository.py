@@ -107,11 +107,15 @@ class SqlAlchemyPostRepository(abs_repo.AbstractPostRepository):
         for comment in list(post.comments):
             # comment.id None or 0 => new
             if getattr(comment, "id", None) in (None, 0):
+                # Get the username for the user_id
+                user_stmt = select(user_table.c.username).where(user_table.c.id == comment.user_id)
+                username_result = self.session.execute(user_stmt).scalar()
+
                 stmt = comment_table.insert().values(
                     post_id=post.id,
                     user_id=comment.user_id,
                     body=comment.body,
-                    username=None,
+                    username=username_result,
                 ).returning(comment_table.c.id)
                 new_id = self.session.execute(stmt).scalar_one()
                 self.last_comment_id = new_id
@@ -171,7 +175,9 @@ class SqlAlchemyPostRepository(abs_repo.AbstractPostRepository):
             body=row["body"],
         )
         # Load comments
-        c_stmt = select(comment_table).where(comment_table.c.post_id == post.id)
+        # Join with user table to get username for each comment
+        c_stmt = select(comment_table).\
+                 where(comment_table.c.post_id == post.id)
         for crow in self.session.execute(c_stmt).mappings().all():
             post.comments.add(
                 model.Comment(
@@ -194,7 +200,10 @@ class SqlAlchemyCommentRepository(abs_repo.AbstractCommentRepository):
         self.session = session
 
     def _get(self, comment_id: int) -> Optional[model.Comment]:
-        stmt = select(comment_table).where(comment_table.c.id == comment_id)
+        # Join with user table to get username for the comment
+        stmt = select(comment_table, user_table.c.username).\
+               join(user_table, comment_table.c.user_id == user_table.c.id).\
+               where(comment_table.c.id == comment_id)
         row = self.session.execute(stmt).mappings().first()
         if not row:
             return None

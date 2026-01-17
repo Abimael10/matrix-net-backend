@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlalchemy
 from sqlalchemy import func
-from src.db import comment_table, likes_table, post_table, database
+from src.db import comment_table, likes_table, post_table, user_table, database
 
 
 async def get_post(post_id: int):
