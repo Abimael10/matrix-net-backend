@@ -129,3 +129,37 @@ async def like_post(
     except exceptions.PostNotFound:
         raise HTTPException(status_code=404, detail="Post not found")
     return {"liked": liked}
+
+
+@router.delete("/api/posts/{post_id}", status_code=204)
+async def delete_post(
+    post_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    request: Request,
+):
+    bus = get_bus(request)
+    cmd = commands.DeletePost(post_id=post_id, user_id=current_user.id)
+    try:
+        bus.handle(cmd)
+    except exceptions.PostNotFound:
+        raise HTTPException(status_code=404, detail="Post not found")
+    except exceptions.Unauthorized:
+        raise HTTPException(status_code=401, detail="You can only delete your own posts")
+    return
+
+
+@router.delete("/api/comments/{comment_id}", status_code=204)
+async def delete_comment(
+    comment_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    request: Request,
+):
+    bus = get_bus(request)
+    cmd = commands.DeleteComment(comment_id=comment_id, user_id=current_user.id)
+    try:
+        bus.handle(cmd)
+    except exceptions.CommentNotFound:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    except exceptions.Unauthorized:
+        raise HTTPException(status_code=401, detail="You can only delete your own comments")
+    return

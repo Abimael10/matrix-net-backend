@@ -16,3 +16,7 @@ class Unauthorized(DomainError):
 
 class InvalidOperation(DomainError):
     pass
+
+
+class CommentNotFound(DomainError):
+    pass

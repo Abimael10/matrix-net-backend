@@ -48,6 +48,18 @@ class PasswordChanged(Event):
 
 
 @dataclass
+class PostDeleted(Event):
+    post_id: int
+    user_id: int
+
+
+@dataclass
+class CommentDeleted(Event):
+    comment_id: int
+    user_id: int
+
+
+@dataclass
 class FileUploaded(Event):
     file_name: str
     file_url: str

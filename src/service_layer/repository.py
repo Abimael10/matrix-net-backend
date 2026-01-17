@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 from typing import Iterable, Optional, Set
 
-from src.domain.model import PostAggregate, UserAggregate
+from src.domain.model import Comment, PostAggregate, UserAggregate
 
 
 class AbstractUserRepository(abc.ABC):
@@ -111,3 +111,29 @@ class AbstractPostRepository(abc.ABC):
 
     @abc.abstractmethod
     def _remove_like(self, post_id: int, user_id: int) -> None: ...
+
+    def delete(self, post_id: int) -> None:
+        self._delete(post_id)
+
+    @abc.abstractmethod
+    def _delete(self, post_id: int) -> None: ...
+
+
+class AbstractCommentRepository(abc.ABC):
+    def __init__(self) -> None:
+        self.seen: Set[Comment] = set()
+
+    def get(self, comment_id: int) -> Optional[Comment]:
+        comment = self._get(comment_id)
+        if comment:
+            self.seen.add(comment)
+        return comment
+
+    def delete(self, comment_id: int) -> None:
+        self._delete(comment_id)
+
+    @abc.abstractmethod
+    def _get(self, comment_id: int) -> Optional[Comment]: ...
+
+    @abc.abstractmethod
+    def _delete(self, comment_id: int) -> None: ...

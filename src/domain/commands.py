@@ -75,6 +75,18 @@ class ChangePassword(Command):
 
 
 @dataclass
+class DeletePost(Command):
+    post_id: int
+    user_id: int  # To verify ownership
+
+
+@dataclass
+class DeleteComment(Command):
+    comment_id: int
+    user_id: int  # To verify ownership
+
+
+@dataclass
 class DeleteAccount(Command):
     user_id: int
     verify_password_hash: Optional[str] = None

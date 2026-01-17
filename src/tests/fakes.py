@@ -114,3 +114,31 @@ class FakePostRepository(repository.AbstractPostRepository):
         target = Like(post_id=post_id, user_id=user_id)
         if target in post.likes:
             post.likes.remove(target)
+
+    def _delete(self, post_id: int) -> None:
+        post = self._posts.get(post_id)
+        if post:
+            # Remove associated comments and likes
+            # In the fake implementation, comments are stored within the post aggregate
+            # So removing the post removes the comments too
+            del self._posts[post_id]
+            # Also remove from user mapping
+            if post.user_id in self._posts_by_user:
+                self._posts_by_user[post.user_id].discard(post_id)
+
+
+class FakeCommentRepository(repository.AbstractCommentRepository):
+    def __init__(self, comments: Iterable[Comment] | None = None) -> None:
+        super().__init__()
+        self._comments: Dict[int, Comment] = {}
+        self._next_id = 1
+        if comments:
+            for c in comments:
+                self._comments[c.id] = c
+                self._next_id = max(self._next_id, c.id + 1)
+
+    def _get(self, comment_id: int) -> Optional[Comment]:
+        return self._comments.get(comment_id)
+
+    def _delete(self, comment_id: int) -> None:
+        self._comments.pop(comment_id, None)

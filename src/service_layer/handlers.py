@@ -58,6 +58,22 @@ def create_post(cmd: commands.CreatePost, uow: unit_of_work.AbstractUnitOfWork) 
     return post.id
 
 
+def delete_post(cmd: commands.DeletePost, uow: unit_of_work.AbstractUnitOfWork):
+    post = uow.posts.get(cmd.post_id)
+    if not post:
+        raise exceptions.PostNotFound(f"Post {cmd.post_id} not found")
+
+    # Verify ownership
+    if post.user_id != cmd.user_id:
+        raise exceptions.Unauthorized("You can only delete your own posts")
+
+    # Remove the post
+    uow.posts.delete(cmd.post_id)
+    _ensure_events_list(post).append(events.PostDeleted(post_id=cmd.post_id, user_id=cmd.user_id))
+    uow.commit()
+    return cmd.post_id
+
+
 def add_comment(cmd: commands.AddComment, uow: unit_of_work.AbstractUnitOfWork) -> int:
     post = uow.posts.get(cmd.post_id)
     if not post:
@@ -73,6 +89,22 @@ def add_comment(cmd: commands.AddComment, uow: unit_of_work.AbstractUnitOfWork) 
     )
     uow.commit()
     return new_id
+
+
+def delete_comment(cmd: commands.DeleteComment, uow: unit_of_work.AbstractUnitOfWork):
+    comment = uow.comments.get(cmd.comment_id)
+    if not comment:
+        raise exceptions.CommentNotFound(f"Comment {cmd.comment_id} not found")
+
+    # Verify ownership - need to check if the comment belongs to the user
+    # Since comments are stored separately, we need to check the user_id
+    if comment.user_id != cmd.user_id:
+        raise exceptions.Unauthorized("You can only delete your own comments")
+
+    # Remove the comment
+    uow.comments.delete(cmd.comment_id)
+    uow.commit()
+    return cmd.comment_id
 
 
 def toggle_like(cmd: commands.ToggleLike, uow: unit_of_work.AbstractUnitOfWork):

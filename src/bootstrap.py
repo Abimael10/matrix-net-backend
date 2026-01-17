@@ -35,6 +35,8 @@ def bootstrap(
         commands.UploadFile: partial(handlers.upload_file, uow=uow, file_storage=file_storage.upload),
         commands.UpdateProfile: partial(handlers.update_profile, uow=uow),
         commands.ChangePassword: partial(handlers.change_password, uow=uow),
+        commands.DeletePost: partial(handlers.delete_post, uow=uow),
+        commands.DeleteComment: partial(handlers.delete_comment, uow=uow),
         commands.DeleteAccount: partial(handlers.delete_account, uow=uow),
     }
 

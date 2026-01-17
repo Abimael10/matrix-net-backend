@@ -232,8 +232,8 @@ async def test_get_missing_post_with_comments(
 
 @pytest.mark.anyio
 async def test_like_post(
-    async_client: AsyncClient, 
-    created_post: dict, 
+    async_client: AsyncClient,
+    created_post: dict,
     logged_in_token: str
 ):
     response = await async_client.post(
@@ -242,3 +242,151 @@ async def test_like_post(
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 201
+
+
+@pytest.mark.anyio
+async def test_delete_post(
+    async_client: AsyncClient,
+    created_post: dict,
+    logged_in_token: str
+):
+    # Verify post exists initially
+    response = await async_client.get(f"/api/posts/{created_post['id']}")
+    assert response.status_code == 200
+
+    # Delete the post
+    response = await async_client.delete(
+        f"/api/posts/{created_post['id']}",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 204
+
+    # Verify post is deleted
+    response = await async_client.get(f"/api/posts/{created_post['id']}")
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_delete_post_unauthorized(
+    async_client: AsyncClient,
+    created_post: dict,
+    logged_in_token: str,
+    confirmed_user: dict
+):
+    # Create another user and log in
+    new_user_data = {
+        "email": "anotheruser@example.com",
+        "password": "newpassword123",
+        "username": "anotheruser"
+    }
+    await async_client.post("/api/register", json=new_user_data)
+
+    login_response = await async_client.post(
+        "/api/token",
+        data={
+            "username": new_user_data["email"],
+            "password": new_user_data["password"]
+        }
+    )
+    new_token = login_response.json()["access_token"]
+
+    # Try to delete the post created by the original user
+    response = await async_client.delete(
+        f"/api/posts/{created_post['id']}",
+        headers={"Authorization": f"Bearer {new_token}"}
+    )
+    assert response.status_code == 401
+    assert "You can only delete your own posts" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_delete_nonexistent_post(
+    async_client: AsyncClient,
+    logged_in_token: str
+):
+    # Try to delete a post that doesn't exist
+    response = await async_client.delete(
+        "/api/posts/9999",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 404
+    assert "Post not found" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_delete_comment(
+    async_client: AsyncClient,
+    created_comment: dict,
+    logged_in_token: str
+):
+    # Verify comment exists initially
+    response = await async_client.get(f"/api/posts/{created_comment['post_id']}/comment")
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+    # Delete the comment
+    response = await async_client.delete(
+        f"/api/comments/{created_comment['id']}",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 204
+
+    # Verify comment is deleted
+    response = await async_client.get(f"/api/posts/{created_comment['post_id']}/comment")
+    assert response.status_code == 200
+    assert len(response.json()) == 0
+
+
+@pytest.mark.anyio
+async def test_delete_comment_unauthorized(
+    async_client: AsyncClient,
+    created_post: dict,
+    logged_in_token: str,
+    confirmed_user: dict
+):
+    # Create another user and log in
+    new_user_data = {
+        "email": "anotheruser@example.com",
+        "password": "newpassword123",
+        "username": "anotheruser"
+    }
+    await async_client.post("/api/register", json=new_user_data)
+
+    login_response = await async_client.post(
+        "/api/token",
+        data={
+            "username": new_user_data["email"],
+            "password": new_user_data["password"]
+        }
+    )
+    new_token = login_response.json()["access_token"]
+
+    # Create a comment with the new user
+    response = await async_client.post(
+        "/api/posts/comment",
+        json={"body": "Another user's comment", "post_id": created_post["id"]},
+        headers={"Authorization": f"Bearer {new_token}"}
+    )
+    another_comment = response.json()
+
+    # Try to delete the other user's comment with the original user's token
+    response = await async_client.delete(
+        f"/api/comments/{another_comment['id']}",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 401
+    assert "You can only delete your own comments" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_delete_nonexistent_comment(
+    async_client: AsyncClient,
+    logged_in_token: str
+):
+    # Try to delete a comment that doesn't exist
+    response = await async_client.delete(
+        "/api/comments/9999",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 404
+    assert "Comment not found" in response.json()["detail"]

@@ -138,6 +138,14 @@ class SqlAlchemyPostRepository(abs_repo.AbstractPostRepository):
                 likes_table.c.post_id == post_id, likes_table.c.user_id == user_id
             )
         )
+
+    def _delete(self, post_id: int) -> None:
+        # Delete associated comments and likes first due to foreign key constraints
+        self.session.execute(comment_table.delete().where(comment_table.c.post_id == post_id))
+        self.session.execute(likes_table.delete().where(likes_table.c.post_id == post_id))
+        # Then delete the post
+        self.session.execute(post_table.delete().where(post_table.c.id == post_id))
+        
     def _get(self, post_id: int) -> Optional[model.PostAggregate]:
         stmt = select(post_table).where(post_table.c.id == post_id)
         row = self.session.execute(stmt).mappings().first()
@@ -178,3 +186,24 @@ class SqlAlchemyPostRepository(abs_repo.AbstractPostRepository):
         for lrow in self.session.execute(l_stmt).mappings().all():
             post.likes.add(model.Like(post_id=lrow["post_id"], user_id=lrow["user_id"]))
         return post
+
+
+class SqlAlchemyCommentRepository(abs_repo.AbstractCommentRepository):
+    def __init__(self, session: Session) -> None:
+        super().__init__()
+        self.session = session
+
+    def _get(self, comment_id: int) -> Optional[model.Comment]:
+        stmt = select(comment_table).where(comment_table.c.id == comment_id)
+        row = self.session.execute(stmt).mappings().first()
+        if not row:
+            return None
+        return model.Comment(
+            id=row["id"],
+            post_id=row["post_id"],
+            user_id=row["user_id"],
+            body=row["body"],
+        )
+
+    def _delete(self, comment_id: int) -> None:
+        self.session.execute(comment_table.delete().where(comment_table.c.id == comment_id))

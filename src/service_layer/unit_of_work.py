@@ -13,6 +13,7 @@ from src.adapters import repository as sql_repo
 class AbstractUnitOfWork(abc.ABC):
     users: repository.AbstractUserRepository
     posts: repository.AbstractPostRepository
+    comments: repository.AbstractCommentRepository
 
     def __enter__(self) -> "AbstractUnitOfWork":
         return self
@@ -22,7 +23,7 @@ class AbstractUnitOfWork(abc.ABC):
 
     def collect_new_events(self) -> List:
         events = []
-        for repo in (getattr(self, "users", None), getattr(self, "posts", None)):
+        for repo in (getattr(self, "users", None), getattr(self, "posts", None), getattr(self, "comments", None)):
             if repo is None:
                 continue
             for agg in repo.seen:
@@ -55,6 +56,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         self._ensure_schema()
         self.users = sql_repo.SqlAlchemyUserRepository(self.session)
         self.posts = sql_repo.SqlAlchemyPostRepository(self.session)
+        self.comments = sql_repo.SqlAlchemyCommentRepository(self.session)
         return super().__enter__()
 
     def __exit__(self, *args) -> None:
@@ -89,9 +91,11 @@ class FakeUnitOfWork(AbstractUnitOfWork):
         self,
         users_repo: repository.AbstractUserRepository,
         posts_repo: repository.AbstractPostRepository,
+        comments_repo: repository.AbstractCommentRepository | None = None,
     ) -> None:
         self.users = users_repo
         self.posts = posts_repo
+        self.comments = comments_repo or repository.AbstractCommentRepository()
         self.committed = False
 
     def __enter__(self) -> "FakeUnitOfWork":
